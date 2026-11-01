@@ -7,10 +7,14 @@ name as `Ambiguous`, and missing data as `Unavailable`. Every scored result carr
 
 from __future__ import annotations
 
+import functools
+import inspect
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from pydantic import BaseModel, Field
-from pydantic_ai import RunContext
+from pydantic_ai import ModelResponse, RunContext, ToolCallPart
 from pydantic_ai.toolsets import FunctionToolset
 
 from app import __version__
@@ -81,6 +85,54 @@ class Ambiguous(BaseModel):
 
 class Unavailable(BaseModel):
     reason: str
+
+
+class Repeated(BaseModel):
+    """Returned instead of re-running a tool the model already called with the same arguments in this turn."""
+
+    tool: str
+    note: str = "this exact call was already made in this turn; use its earlier result and answer now, do not call it again"
+
+
+def repeated_in_run(ctx: RunContext[Any], name: str, args: dict[str, Any]) -> bool:
+    """True when an earlier model response in this run already carried the same tool call (name and arguments)."""
+    seen = 0
+    for m in ctx.messages:
+        if isinstance(m, ModelResponse):
+            for part in m.parts:
+                if isinstance(part, ToolCallPart) and part.tool_name == name and part.args_as_dict() == args:
+                    seen += 1
+    return seen > 1
+
+
+def dedupe(fn: Callable[..., Any]) -> Callable[..., Any]:
+    """Wrap a tool so a repeated identical call in one turn returns `Repeated` instead of running again."""
+    sig = inspect.signature(fn)
+    params = [p for p in sig.parameters if p != "ctx"]
+
+    def args_of(a: tuple, kw: dict) -> dict[str, Any]:
+        bound = sig.bind_partial(None, *a, **kw).arguments
+        bound.pop("ctx", None)
+        for name in params:  # defaults count: the model may omit them in one call and send them in the next
+            bound.setdefault(name, sig.parameters[name].default)
+        return {k: v for k, v in bound.items() if v is not inspect.Parameter.empty}
+
+    if inspect.iscoroutinefunction(fn):
+        @functools.wraps(fn)
+        async def async_wrapper(ctx: RunContext[Any], *a: Any, **kw: Any) -> Any:
+            if repeated_in_run(ctx, fn.__name__, args_of(a, kw)):
+                return Repeated(tool=fn.__name__)
+            return await fn(ctx, *a, **kw)
+
+        return async_wrapper
+
+    @functools.wraps(fn)
+    def wrapper(ctx: RunContext[Any], *a: Any, **kw: Any) -> Any:
+        if repeated_in_run(ctx, fn.__name__, args_of(a, kw)):
+            return Repeated(tool=fn.__name__)
+        return fn(ctx, *a, **kw)
+
+    return wrapper
 
 
 class AirportSummary(BaseModel):
@@ -269,5 +321,5 @@ async def live_status(ctx: RunContext[ToolContext], airport: str) -> LiveStatus 
 def build_toolset() -> FunctionToolset[ToolContext]:
     toolset: FunctionToolset[ToolContext] = FunctionToolset()
     for fn in (about, list_airports, rank_airports, compare_airports, airport_score, airport_profile, traffic_mix, unmet_demand, live_status):
-        toolset.add_function(fn)
+        toolset.add_function(dedupe(fn), name=fn.__name__)
     return toolset

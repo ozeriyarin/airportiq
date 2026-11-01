@@ -60,8 +60,11 @@ def make_client(service, budget, **kw) -> TestClient:
     return TestClient(create_app(service, store, budget, model_names=["fake"], guard_name="fake-guard", **kw))
 
 
-def test_criterion_1_chain_skips_keyless_models_fails_with_no_key_and_has_no_openai(caplog):
+def test_criterion_1_chain_skips_keyless_models_fails_with_no_key_and_has_no_openai(caplog, monkeypatch):
     caplog.set_level(logging.INFO)
+    for key in ("ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "OPENROUTER_API_KEY", "TYPESAFE_API_KEY"):  # a prior compose() may have loaded .env
+        monkeypatch.delenv(key, raising=False)
+        monkeypatch.delenv(f"AIRPORTIQ_{key}", raising=False)
     settings = Settings(_env_file=None, anthropic_api_key="k1")
     chain = build_chain(
         CFG.chain, settings, CFG, http_client_factory=lambda: None,

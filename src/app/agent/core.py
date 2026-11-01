@@ -13,10 +13,12 @@ from pydantic_ai import (
     ModelMessage,
     ModelRequest,
     ModelResponse,
+    RetryPromptPart,
     RunContext,
     ToolCallPart,
     ToolReturnPart,
     UsageLimits,
+    capture_run_messages,
 )
 from pydantic_ai.exceptions import FallbackExceptionGroup, UsageLimitExceeded
 from pydantic_ai.models import Model
@@ -86,6 +88,17 @@ def tool_results_of(messages: list[ModelMessage]) -> list[str]:
     ]
 
 
+def tool_call_trace(messages: list[ModelMessage]) -> list[str]:
+    """Tool names in call order plus 'retry' markers, for the log line when a turn hits the request limit."""
+    trace: list[str] = []
+    for m in messages:
+        if isinstance(m, ModelResponse):
+            trace += [f"{p.tool_name}{p.args_as_dict()}" for p in m.parts if isinstance(p, ToolCallPart) and p.tool_name != "final_result"]
+        elif isinstance(m, ModelRequest):
+            trace += ["retry" for p in m.parts if isinstance(p, RetryPromptPart)]
+    return trace
+
+
 def tools_used(messages: list[ModelMessage]) -> list[str]:
     names: list[str] = []
     for m in messages:
@@ -128,6 +141,7 @@ class Service:
             return Turn(status="budget_exhausted", answer=prompts.BUDGET_EXHAUSTED, latency_ms=elapsed())
 
         cost = 0.0
+        captured: list[ModelMessage] = []
         try:
             verdict = await self.guard.screen(message, previous=conversation.last_question)
             if verdict.label != "in_scope":
@@ -136,17 +150,18 @@ class Service:
                 text = prompts.REFUSAL_INJECTION if verdict.label == "injection" else prompts.REFUSAL_OFF_TOPIC
                 return Turn(status=status, answer=text, guardrail=verdict.decided_by, latency_ms=elapsed())
 
-            result = await self.agent.run(
-                message,
-                deps=self.deps,
-                message_history=list(conversation.history),
-                usage_limits=UsageLimits(
-                    request_limit=self.limits.model_requests_per_turn, cost_limit=self.limits.per_turn_usd  # type: ignore[arg-type]
-                ),
-            )
+            with capture_run_messages() as captured:
+                result = await self.agent.run(
+                    message,
+                    deps=self.deps,
+                    message_history=list(conversation.history),
+                    usage_limits=UsageLimits(
+                        request_limit=self.limits.model_requests_per_turn, cost_limit=self.limits.per_turn_usd  # type: ignore[arg-type]
+                    ),
+                )
         except UsageLimitExceeded as e:
             self.budget.release(rid, failed=True)
-            log.warning("turn stopped by usage limit: %s", e)
+            log.warning("turn stopped by usage limit: %s; tool calls: %s", e, tool_call_trace(captured))
             return Turn(status="cannot_answer", answer="I had to stop before finishing this answer. Try a narrower question.", latency_ms=elapsed())
         except (ModelAPIError, FallbackExceptionGroup, httpx2.HTTPError) as e:  # transport errors after retries
             self.budget.release(rid, failed=True)

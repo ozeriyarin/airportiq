@@ -26,6 +26,7 @@ README evals table, DESIGN "where AI is used" refresh.
 5. A committed baseline report on the live set has no failed case (exit 0 or 2) with the grounding check on, records prompt and config versions, cost, cache share and latency percentiles; any flaky case is named in the README table with its reason. (Round 2: the set grew from 23 to 43 cases; a model-invented number that the grounding check catches in one of two runs is recorded as flaky, not hidden.)
 6. A committed `--down anthropic` report shows every answered run served by Gemini and the simulated outage in its notes; its pass count is recorded honestly (a lower rate on the fallback model is expected, the proof is that answers still arrive).
 7. The README evals table lists both reports with their pass counts and cost; the roadmap Shipped entry carries the commit.
+8. (Round 2) A tool called again with the same arguments in the same turn returns `Repeated` instead of running, so a model that re-issues a call cannot burn the request ceiling; proven offline with a scripted model that repeats a call, and the limit-exceeded log line names the tool-call sequence.
 
 ## Design
 

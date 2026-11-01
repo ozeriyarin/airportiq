@@ -87,3 +87,33 @@ def test_criterion_7_readme_lists_both_reports():
         assert f"{passed}/{len(r['cases'])}" in readme, tag
     roadmap = (ROOT / "agent-os" / "product" / "roadmap.md").read_text(encoding="utf-8")
     assert "**v3 agent**" in roadmap
+
+
+async def test_criterion_8_repeated_tool_call_returns_repeated_instead_of_rerunning(config, prices, budget, caplog):
+    from pydantic_ai import ModelMessage, ModelResponse, ToolCallPart, ToolReturnPart
+    from pydantic_ai.models.function import AgentInfo, FunctionModel
+
+    from app.agent.core import Conversation, Service, build_agent, tool_call_trace
+    from app.agent.tools import ToolContext
+    from tests.fakes import USAGE, final, screening_model
+
+    calls = {"n": 0}
+
+    def repeating(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        calls["n"] += 1
+        if calls["n"] <= 3:
+            return ModelResponse(parts=[ToolCallPart("list_airports", {"area": "New England"})], usage=USAGE, model_name="rep")
+        return final({"status": "answered", "answer": "ok", "sources": [], "limitations": []}, model_name="rep")
+
+    from app.data.registry import AirportRegistry
+
+    deps = ToolContext(product_name="t", registry=AirportRegistry.load())
+    from app.decide.guard import Guard
+
+    svc = Service(build_agent(FunctionModel(repeating, model_name="rep")), Guard(screening_model()), budget, config.limits, prices, deps)
+    conv = Conversation(max_turns=5)
+    turn = await svc.ask(conv, "Which airports do you cover in New England?")
+    returns = [p for m in conv.history for p in m.parts if isinstance(p, ToolReturnPart) and p.tool_name == "list_airports"]
+    assert turn.status == "answered" and len(returns) == 3
+    assert "BOS" in str(returns[0].content) and "Repeated" in type(returns[1].content).__name__ and "already" in str(returns[2].content)
+    assert tool_call_trace(conv.history) == ["list_airports{'area': 'New England'}"] * 3
