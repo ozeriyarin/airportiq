@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 class YearValue(BaseModel):
     year: int
     value: float
+    value_pct: float | None = None
 
 
 class ComponentValue(BaseModel):
@@ -20,6 +21,9 @@ class ComponentValue(BaseModel):
     low: float | None = None
     high: float | None = None
     trend: float | None = Field(default=None, description="last year minus first year of the window, same unit")
+    low_pct: float | None = None
+    high_pct: float | None = None
+    trend_pct: float | None = Field(default=None, description="trend in percentage points when the unit is a ratio or share")
     detail: dict[str, float] = Field(default_factory=dict, description="sub-metrics behind the value (shares, CAGRs, taxi minutes)")
     note: str = ""
 
@@ -115,6 +119,7 @@ class TrafficMix(BaseModel):
     seats: int
     passengers: int
     load_factor: float | None
+    load_factor_pct: float | None = None
     long_haul_miles: int
     per_year: list[dict[str, float]] = Field(default_factory=list)
     source: str = "BTS T-100 Segment, all carriers, departures performed"
@@ -163,5 +168,6 @@ class AirportProfile(BaseModel):
     operations_latest: int | None
     enplanements_taf_latest: int | None
     international_enplanement_share: float | None
+    international_enplanement_pct: float | None = None
     scoring_version: str
     data_through: dict[str, str]

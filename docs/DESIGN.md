@@ -88,12 +88,17 @@ The product's number is the **Capacity Pressure Score (CPS), 0–100 per airport
 | load_factor | passengers / seats, scheduled passenger service | BTS T-100 | 0.15 |
 | long_haul | departures of 3,000+ statute miles / all departures | BTS T-100 | 0.10 |
 
-**Capacity precedence** (`capacity.py`): FAA annual service volume from the TAF table (measured, 140 airports) →
-FAA capacity-profile hourly rate blended visual 0.7 / marginal 0.2 / instrument 0.1 times 4,000 hours-equivalent
-(31 airports have a profile; it is reported as a cross-check beside the service volume) → a runway model fitted by
-least squares on the airports with a service volume (`service_volume ~ runways_6000ft + runways`, n = 137, RMSE
-92,932 operations per year), used for the 3 airports without one that have runway data and reported with that
-RMSE. Every result names the source.
+**Capacity precedence** (`capacity.py`, scoring 1.1.0): FAA capacity-profile hourly rate (FAA-measured, 31 of the
+largest airports, 2014–2019) blended visual 0.7 / marginal 0.2 / instrument 0.1 times 4,000 hours-equivalent → FAA
+annual service volume from the TAF table (109 airports) → a runway model fitted by least squares on the airports
+with a service volume (`service_volume ~ runways_6000ft + runways`, n = 137, RMSE 92,932 operations per year), used
+for 3 airports and reported with that RMSE; GUM has neither and reports capacity as unavailable. Every result names
+the source. The order was reversed on 1.11.2026 after measuring the two FAA figures against each other: the
+service volume is a planning value that is stale for the largest hubs (16 airports ran above it in FY2024, Denver
+at 1.96 times; profile-to-volume ratio median 1.23, range 0.62 to 2.96), while the profiles are measured rates. Even
+so, 11 airports still run above their capacity figure (LAS 1.73 on a service volume without a profile, SNA 1.50 on a
+2014 profile of a GA-heavy field); their scores carry a limitation saying the figure is dated and utilization
+should be read as "at or above capacity".
 
 **Normalization and lenses** (`components.py`, `engine.py`): each component's latest value is percentile-ranked
 within the universe (ties share a rank), so a value reads as "higher than N% of hub airports". CPS = Σ weight ×
@@ -106,37 +111,37 @@ always yields the same output.
 
 **Why these choices.** Percentiles survive the DEN/ATL outliers that would flatten a min–max scale and read
 naturally in a sentence. The FAA service volume is the only published per-airport capacity that covers the whole
-universe; the profiles exist for 31 airports and agree with it within a few percent where both exist, which is
-the evidence that the service volume is usable. Delay and growth are composites because one sub-metric alone is
-gameable (taxi-out without delay share rewards big airfields; forecast CAGR without actual CAGR rewards optimism).
+universe, but it is stale where it matters most, so the measured profile rates lead where they exist. Delay and
+growth are composites because one sub-metric alone is gameable (taxi-out without delay share rewards big
+airfields; forecast CAGR without actual CAGR rewards optimism).
 
 ### Worked example: SFO
 
-Every figure below is what `agent score SFO` prints on the committed snapshot (scoring 1.0.0, registry 1.0.0);
+Every figure below is what `agent score SFO` prints on the committed snapshot (scoring 1.1.0, registry 1.0.0);
 `test_criterion_14_snapshot_facts_new_england_sfo_and_anchorage` asserts every percentile and the CPS against the
 engine, so this table cannot drift from the code.
 
-Capacity: FAA annual service volume **393,000** operations per year (source `faa_service_volume`, measured). The
-2019 FAA capacity profile cross-checks it: blended rate 100.6 operations per hour × 4,000 hours-equivalent =
-402,400, 2.4% above the service volume.
+Capacity: the 2019 FAA capacity profile, blended rate 100.6 operations per hour × 4,000 hours-equivalent =
+**402,400** operations per year (source `faa_profile`). The TAF service volume, 393,000, sits 2.4% below it and is
+reported beside it.
 
 | component | latest value (unit) | years in band | band | percentile | weight | contribution |
 |---|---|---|---|---|---|---|
-| utilization | 0.9702 (ops / capacity, FY2024) | FY2022–FY2024 | 0.8819–0.9702, trend +0.0883 | 86.6 | 0.30 | 25.98 |
+| utilization | 0.9476 (ops / capacity, FY2024) | FY2022–FY2024 | 0.8613–0.9476, trend +0.0863 | 90.8 | 0.30 | 27.24 |
 | delay | 60.9 (combined percentile; delayed-15 share 0.1893 of 143,415 departures, excess taxi-out 8.4 min) | 2023–2025 | 0.1893–0.2335, trend −0.0105 | 60.9 | 0.25 | 15.22 |
 | growth | 45.8 (combined percentile; forecast CAGR +3.13% to FY2034, actual CAGR −2.18% FY2019→FY2024) | — | — | 45.8 | 0.20 | 9.16 |
 | load_factor | 0.8231 (passengers / seats, 2025) | 2023–2025 | 0.8231–0.8330, trend −0.0099 | 86.5 | 0.15 | 12.97 |
 | long_haul | 0.1362 (25,885 of 190,110 departures ≥ 3,000 mi, 2025; international 20.9%) | 2023–2025 | 0.1251–0.1398, trend +0.011 | 97.2 | 0.10 | 9.72 |
 
-**CPS = 73.1** (Σ contributions). Lenses: congestion 73.8 (mean of utilization 86.6 and delay 60.9), unmet demand
-64.4 (mean of load factor 86.5, growth 45.8, delay 60.9), long haul 97.2. Reading: SFO runs at 97% of its FAA
-service volume with high load factors and the fifth-highest long-haul share of the 144 hubs; its delay sits in the
+**CPS = 74.3** (Σ contributions). Lenses: congestion 75.8 (mean of utilization 90.8 and delay 60.9), unmet demand
+64.4 (mean of load factor 86.5, growth 45.8, delay 60.9), long haul 97.2. Reading: SFO runs at 95% of its FAA
+profile capacity with high load factors and the fifth-highest long-haul share of the 144 hubs; its delay sits in the
 middle because departure delays are average while taxi-out excess is high; growth is a split story, strong FAA
 forecast against a traffic level still below FY2019. `unmet_demand` returns those three components as typed
 drivers (load factor raises, delay raises, growth lowers) and the model narrates them.
 
-Universe facts the example sits in: 144 hub airports (30 large, 35 medium, 79 small); 140 with an FAA service
-volume, 31 with a capacity profile, 3 on the runway model (GPI, IWA, XNA; RMSE 92,932 operations per year over
+Universe facts the example sits in: 144 hub airports (30 large, 35 medium, 79 small); 31 on an FAA capacity
+profile, 109 on the FAA service volume, 3 on the runway model (GPI, IWA, XNA; RMSE 92,932 operations per year over
 137 airports) and 1 without any capacity (GUM, no runway data), which is reported as unavailable.
 
 ## Repository structure
@@ -182,13 +187,25 @@ and tool text are data, never instructions, and the `injection` eval category pr
 
 ## What the evals showed
 
-The first live baseline (prompt 0.2.0) passed 16 of 23 cases; every miss but three was the model converting a
+The first live baseline (prompt 0.2.0, 23 cases) passed 16 of 23; every miss but three was the model converting a
 ratio into a percentage itself (0.1893 became 18.93%), which the grounding check rightly rejects because the
 number was not in a tool result. The fix was in the tools, not the prompt alone: every share now ships with a
 `_pct` field, and the prompt says to quote one or the other, never to multiply. The remaining three were test
 authoring (a length cap too tight for a two-airport answer, source names missing from the data facts, a case that
-required two spellings of one number). The reports under `evals/results/` are the evidence; the README table
-summarizes them.
+required two spellings of one number).
+
+The set then grew to 43 cases (every tool, a modelled-capacity airport, the no-capacity airport, bad years and
+areas, area and lens aliases, a Hebrew question, five follow-ups). The same conversion showed up twice more, in
+the weights the data facts list (0.3 became 30%) and in the per-year bands (0.8526 became 85.26%), and both got the
+same treatment: the facts now state weights in both forms and every band value carries a `_pct` twin (prompt
+0.3.1, scoring 1.1.0). The final baseline is 40 of 43 with no failed case and three flaky cases that share one
+root cause: in two of 86 runs the model looped on tool calls until the 16-request ceiling stopped the turn
+(`cannot_answer`, zero spend), and one of those was a prior turn, which left its follow-up without context. The
+loop is intermittent and not yet reproduced in isolation; it is recorded here rather than hidden. The third flaky
+case ("can an analyst override the weights?") drew an honest "I cannot confirm" once, which the case should have
+accepted. Gemini alone (`--down anthropic`) passes 40 of 43, missing on formatting (31% for 31.0, a rounded
+percentile) and two numbers it computed itself. The reports under `evals/results/` are the evidence; the README
+table summarizes them.
 
 ## What production would change
 

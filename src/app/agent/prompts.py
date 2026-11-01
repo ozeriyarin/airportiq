@@ -2,7 +2,7 @@
 
 import re
 
-PROMPT_VERSION = "0.3.0"
+PROMPT_VERSION = "0.3.1"
 
 # Read by the guard (what counts as in scope) and by the answer model.
 SCOPE_DESCRIPTION = (

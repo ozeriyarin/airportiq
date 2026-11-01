@@ -46,12 +46,18 @@ class _Raw:
 
 
 def _series(values: dict[int, float]) -> tuple[list[YearValue], float | None, float | None, float | None]:
+    """Per-year ratios with their percentage twins, so the model never has to multiply by 100 itself."""
     if not values:
         return [], None, None, None
     years = sorted(values)
-    per_year = [YearValue(year=y, value=round(values[y], 4)) for y in years]
+    per_year = [YearValue(year=y, value=round(values[y], 4), value_pct=round(100 * values[y], 2)) for y in years]
     trend = round(values[years[-1]] - values[years[0]], 4) if len(years) > 1 else None
     return per_year, round(min(values.values()), 4), round(max(values.values()), 4), trend
+
+
+def _pcts(low: float | None, high: float | None, trend: float | None) -> dict[str, float | None]:
+    return {"low_pct": round(100 * low, 2) if low is not None else None, "high_pct": round(100 * high, 2) if high is not None else None,
+            "trend_pct": round(100 * trend, 2) if trend is not None else None}
 
 
 class Engine:
@@ -123,7 +129,7 @@ class Engine:
             if value is not None:
                 detail["utilization_pct"] = round(100 * value, 1)
             return ComponentValue(name=name, label=c.label, unit=c.unit, value=_r(value), percentile=percentile, per_year=per_year,
-                                  low=low, high=high, trend=trend, detail=detail, note=note)
+                                  low=low, high=high, trend=trend, detail=detail, note=note, **_pcts(low, high, trend))
         if name == "delay":
             d15 = {y: v["delayed15_share"] for y, v in raw.delay.items()}
             per_year, low, high, trend = _series(d15)
@@ -134,7 +140,8 @@ class Engine:
                     detail[k.replace("_share", "_pct")] = round(100 * detail[k], 2)
             detail.update({f"percentile_{k}": self._percentiles[f"delay_{k}"][airport] for k in ("d15", "taxi") if airport in self._percentiles[f"delay_{k}"]})
             return ComponentValue(name=name, label=c.label, unit=c.unit, value=percentile, percentile=percentile, per_year=per_year, low=low, high=high,
-                                  trend=trend, detail=detail, note="per_year/low/high/trend are the delayed-15 share; value is the combined percentile")
+                                  trend=trend, detail=detail, note="per_year/low/high/trend are the delayed-15 share; value is the combined percentile",
+                                  **_pcts(low, high, trend))
         if name == "growth":
             g = raw.growth or {}
             detail = {k: round(v, 4) for k, v in g.items()}
@@ -150,7 +157,8 @@ class Engine:
             per_year, low, high, trend = _series(raw.load_factor)
             lf = self._latest(raw.load_factor)
             return ComponentValue(name=name, label=c.label, unit=c.unit, value=_r(lf), percentile=percentile, per_year=per_year, low=low, high=high,
-                                  trend=trend, detail={"load_factor_pct": round(100 * lf, 1)} if lf is not None else {}, note="scheduled passenger service, BTS T-100")
+                                  trend=trend, detail={"load_factor_pct": round(100 * lf, 1)} if lf is not None else {}, note="scheduled passenger service, BTS T-100",
+                                  **_pcts(low, high, trend))
         shares = {y: v["long_haul_share"] for y, v in raw.mix.items()}
         per_year, low, high, trend = _series(shares)
         year = max(raw.mix) if raw.mix else None
@@ -159,7 +167,8 @@ class Engine:
             if k in detail:
                 detail[k.replace("_share", "_pct")] = round(100 * detail[k], 1)
         return ComponentValue(name=name, label=c.label, unit=c.unit, value=_r(self._latest(shares)), percentile=percentile, per_year=per_year,
-                              low=low, high=high, trend=trend, detail=detail, note=f"segments of {cfg.long_haul_miles}+ miles, all carriers incl. cargo")
+                              low=low, high=high, trend=trend, detail=detail, note=f"segments of {cfg.long_haul_miles}+ miles, all carriers incl. cargo",
+                              **_pcts(low, high, trend))
 
     def data_through(self) -> dict[str, str]:
         return {c.source: c.last for c in self.store.coverage()}
@@ -190,6 +199,9 @@ class Engine:
             limitations.append(f"capacity is a runway-model estimate, RMSE {raw.capacity.uncertainty_operations} operations per year")
         elif raw.capacity.source == "faa_profile":
             limitations.append(f"capacity is the FAA profile hourly rate ({raw.capacity.profile_year}) times {self.config.capacity.annual_hours_equivalent} hours")
+        util = next((c for c in comps if c.name == "utilization"), None)
+        if util and util.value is not None and util.value > 1:
+            limitations.append(f"operations exceed the FAA capacity figure ({raw.capacity.source}), so that figure is dated; read utilization as at or above capacity")
         if missing:
             limitations.append(f"no data for {', '.join(missing)}; weights renormalized over the other components")
         if "delay" in present:
@@ -254,7 +266,8 @@ class Engine:
             long_haul_pct=round(100 * m["long_haul_share"], 1), international_departures=int(m["international_departures"]),
             international_pct=round(100 * m["international_share"], 1), cargo_departures=int(m["cargo_departures"]),
             cargo_pct=round(100 * m["cargo_share"], 1), seats=int(m["seats"]), passengers=int(m["passengers"]),
-            load_factor=round(lf, 3) if lf is not None else None, long_haul_miles=self.config.long_haul_miles,
+            load_factor=round(lf, 3) if lf is not None else None, load_factor_pct=round(100 * lf, 1) if lf is not None else None,
+            long_haul_miles=self.config.long_haul_miles,
             per_year=[{"year": float(y), "long_haul_pct": round(100 * v["long_haul_share"], 1), "international_pct": round(100 * v["international_share"], 1)} for y, v in sorted(raw.mix.items())],
             scoring_version=self.config.version, data_through=self.data_through(),
         )
@@ -285,7 +298,9 @@ class Engine:
             runways_6000ft=a.runways_6000ft, longest_runway_ft=a.longest_runway_ft, enplanements_latest_year=a.enplanements_latest_year,
             enplanements_latest=a.enplanements_latest, enplanements_previous=a.enplanements_previous, capacity=raw.capacity,
             latest_actual_fiscal_year=raw.taf_last_actual, operations_latest=raw.taf_ops_latest, enplanements_taf_latest=raw.taf_enp_latest,
-            international_enplanement_share=raw.taf_intl_share, scoring_version=self.config.version, data_through=self.data_through(),
+            international_enplanement_share=raw.taf_intl_share,
+            international_enplanement_pct=round(100 * raw.taf_intl_share, 1) if raw.taf_intl_share is not None else None,
+            scoring_version=self.config.version, data_through=self.data_through(),
         )
 
 

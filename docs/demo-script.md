@@ -21,7 +21,7 @@ over FAA and BTS data and the LLM only chooses tools and explains."
 3. *What is the percentage of long haul flights out of Anchorage airport?* → `traffic_mix`: the share, the year,
    the denominator, cargo share; note 3,000 miles is a stated definition.
 4. *What is the unmet flight demand in SFO airport and why?* → `unmet_demand`: typed drivers, utilization context,
-   FAA service volume 393,000 vs the 2019 profile cross-check 402,400; "inferred, not observed".
+   2019 FAA profile capacity 402,400 (service volume 393,000 beside it); "inferred, not observed".
    Follow-up: *and the year before?* → the engine's per-year series, no new definition.
 
 ## 3. Under the hood (30 s)
@@ -33,9 +33,9 @@ over FAA and BTS data and the LLM only chooses tools and explains."
 
 ## Numbers to have ready
 
-- Universe: 144 FAA hub airports (30 large, 35 medium, 79 small); 140 with an FAA service volume, 31 with a profile.
+- Universe: 144 FAA hub airports (30 large, 35 medium, 79 small); 31 on an FAA profile, 109 on the service volume.
 - Capacity model: RMSE 92,932 operations per year over 137 airports (used for 3 airports; GUM has no capacity).
-- SFO: CPS 73.1; utilization 0.97 of 393,000 operations; load factor 0.823; long-haul 13.6% of 190,110 departures (2025).
+- SFO: CPS 74.3; utilization 0.95 of 402,400 operations; load factor 0.823; long-haul 13.6% of 190,110 departures (2025).
 - ANC: 31.0% long-haul of 87,988 departures in 2025; cargo 59% of movements.
 - Cost: a Sonnet tool turn ≈ 0.01–0.03 USD with caching; eval run cost in the README table.
 
@@ -43,6 +43,7 @@ over FAA and BTS data and the LLM only chooses tools and explains."
 
 - "Profitability?" The score is a capacity-pressure proxy; cost, financing and revenue are out of scope.
 - "How sure?" Bands per year, model RMSE, data vintage per source, COVID years excluded; every answer carries them.
+- "Why profiles first?" The FAA service volume is stale for the big hubs (Denver ran at 1.96 times it); the profiles are measured rates. Found by checking the ratios, changed the same day, recorded in the v2 spec as Round 2.
 - "What was pre-built?" The platform (chain, guard, ledger, evals) came from an earlier project; the airport data
   layer, the KPI and the prompts were built today.
 - "Production?" ASPM access for measured capacity everywhere, Postgres for sessions and spend, scheduled refresh,

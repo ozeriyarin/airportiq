@@ -59,6 +59,24 @@ marked and ran on the same commit.
 |---|---|---|---|
 | 40 | 429 with Retry-After using free turns | PASS | `POST /api/chat {"message":"hi"}` → `HTTP/1.1 429 Too Many Requests`, `retry-after: 2678`, body `Too many requests from your address. Try again later.` The window had been consumed by the live checks above together with browser use from the same network during the session, which is why checks 35–36 moved to a local run. |
 
+## Round 2 addendum — capacity precedence and the extended eval set
+
+After the pass above, a data check showed the FAA service volume is stale for the largest hubs (16 airports ran
+above it in FY2024, Denver at 1.96 times) and that the docs' claim that the profiles agree with it "within a few
+percent" was false (median ratio 1.23, range 0.62 to 2.96). Scoring 1.1.0 restores the approved precedence,
+profile first, service volume second, runway model last, and adds a limitation whenever operations exceed the
+capacity figure (11 airports). The eval set grew from 23 to 43 cases. Re-verification evidence:
+
+| # | Check | Result | Evidence |
+|---|---|---|---|
+| R1 | Capacity precedence switched, worked example refreshed | PASS | `agent score SFO`: capacity 402,400 from `faa_profile`, utilization 0.9476 (pct 90.8), CPS 74.3; DESIGN table and README carry the same figures, asserted by `test_criterion_14` |
+| R2 | False sentence removed | PASS | grep "within a few percent" in README and DESIGN → 0 |
+| R3 | Eval set size and coverage | PASS | 43 cases: 26 in scope, 4 off topic, 4 injection, 4 false positive, 5 follow-up; all eight tools asserted; XNA (modelled), GUM (no capacity), bad year, bad area, Hebrew |
+| R4 | Baseline (repeat 2, prompt 0.3.1) | PASS with flakes | 40/43, no failed case, exit 2, ungrounded runs 0, 0.9335 USD; flaky: sfo-long-haul-2023 and fu-anc-year-before (tool-call loop hit the 16-request ceiling in 2 of 86 runs), fp-override (honest "cannot confirm" once) |
+| R5 | Gemini alone (`--down anthropic`) | PASS, recorded | 40/43 served by gemini-2.5-flash, 0.0713 USD; misses are formatting (31% for 31.0) and two self-computed numbers caught by grounding |
+| R6 | Offline suite after the switch | PASS | ruff clean; full pytest green (count in the commit message) |
+| R7 | Live service after redeploy | see commit | `agent verify` record refreshed in the README deployment section |
+
 ## Left to the owner
 
 - Phone pass on https://airportiq.onrender.com: keyboard does not cover the input, last bubble clears the sticky bar, example placeholder rotates, dark mode follows the system.

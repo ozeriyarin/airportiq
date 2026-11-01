@@ -137,9 +137,11 @@ def test_criterion_3_capacity_precedence_measured_before_profile_before_model(en
     cfg = engine.config.capacity
     model = fit_runway_model(AIRPORTS, cfg.runway_model.features)
     assert model is not None and model.n == 4 and model.rmse >= 0
-    aaa = capacity_for(AIRPORTS[0], cfg, engine.profiles, model)
-    assert aaa.source == "faa_service_volume" and aaa.annual_operations == 400_000 and aaa.uncertainty_operations is None
-    assert aaa.profile_hourly_rate == pytest.approx(100.6, abs=0.1) and aaa.profile_annual_operations == round(aaa.profile_hourly_rate * 4000)
+    aaa = capacity_for(AIRPORTS[0], cfg, engine.profiles, model)  # profiled: the profile wins over the service volume
+    assert aaa.source == "faa_profile" and aaa.uncertainty_operations is None
+    assert aaa.profile_hourly_rate == pytest.approx(100.6, abs=0.1) and aaa.annual_operations == aaa.profile_annual_operations == round(aaa.profile_hourly_rate * 4000)
+    bbb = capacity_for(AIRPORTS[1], cfg, engine.profiles, model)  # no profile: the service volume
+    assert bbb.source == "faa_service_volume" and bbb.annual_operations == 200_000 and bbb.profile_hourly_rate is None
     eee = capacity_for(AIRPORTS[4], cfg, engine.profiles, model)
     assert eee.source == "runway_model" and eee.annual_operations > 0 and eee.uncertainty_operations == round(model.rmse)
     no_sv = AIRPORTS[0].model_copy(update={"service_volume": 0})
@@ -152,7 +154,7 @@ def test_criterion_4_utilization_per_year_band_and_trend(engine: Engine):
     series = comp.utilization_by_year(rows, 400, years=3)
     assert series == {2022: 0.8, 2023: 0.85, 2024: 0.9} and comp.utilization_by_year(rows, 0, 3) == {}
     u = next(c for c in engine.score("AAA").components if c.name == "utilization")
-    assert u.value == pytest.approx(0.95) and u.low == u.high == pytest.approx(0.95) and u.trend == 0 and "measured" in u.note
+    assert u.value == pytest.approx(380_000 / 402_400, abs=1e-4) and u.low == u.high == u.value and u.trend == 0 and "measured" in u.note
 
 
 def test_criterion_5_delay_combines_delayed15_and_excess_taxi_and_excludes_thin_years(engine: Engine):
@@ -219,7 +221,7 @@ def test_criterion_11_unmet_demand_returns_typed_drivers(engine: Engine):
     assert {c.name for c in u.components} == {"load_factor", "growth", "delay"} and u.utilization is not None
     assert u.drivers and u.drivers == sorted(u.drivers, key=lambda d: -d.magnitude)
     assert all(d.direction in ("raises", "lowers") and d.component in ("load_factor", "growth", "delay") for d in u.drivers)
-    assert u.capacity.source == "faa_service_volume" and any("inferred" in lim for lim in u.limitations)
+    assert u.capacity.source == "faa_service_volume" and any("inferred" in lim for lim in u.limitations)  # DDD has no profile
     assert not hasattr(u, "narrative")
 
 
@@ -236,7 +238,7 @@ def test_criterion_12_tools_never_raise_and_carry_versions(engine: Engine):
     assert isinstance(_rank(empty, "expansion", None, 10), Unavailable) and isinstance(_unmet(empty, "AAA"), Unavailable)
     s = _score(deps, "AAA")
     assert s.scoring_version == engine.config.version and s.data_through and s.capacity.source
-    assert _profile(deps, "AAA").capacity.source == "faa_service_volume" and _compare(deps, "AAA", "ZZZ", "congestion").kind == "airport"
+    assert _profile(deps, "AAA").capacity.source == "faa_profile" and _compare(deps, "AAA", "ZZZ", "congestion").kind == "airport"
 
 
 def _deps_real() -> ToolContext:
@@ -262,7 +264,9 @@ def test_criterion_14_snapshot_facts_new_england_sfo_and_anchorage():
     mix = engine.traffic_mix("ANC")
     rows = store._q("SELECT SUM(CASE WHEN long_haul THEN departures ELSE 0 END), SUM(departures) FROM t100 WHERE airport='ANC' AND year=?", [mix.year])[0]
     assert mix.long_haul_pct == pytest.approx(100 * rows[0] / rows[1], abs=0.051)
-    assert sfo.capacity.source == "faa_service_volume" and sfo.capacity.annual_operations == 393000 and sfo.capacity.profile_year == 2019
+    assert sfo.capacity.source == "faa_profile" and sfo.capacity.annual_operations == 402400 and sfo.capacity.profile_year == 2019
+    anc = engine.score("ANC").capacity
+    assert anc.source == "faa_service_volume" and anc.annual_operations == 307000
     design = (ROOT / "docs" / "DESIGN.md").read_text(encoding="utf-8")
     for c in sfo.components:
         if c.value is not None:
@@ -275,7 +279,7 @@ def test_criterion_15_smoke_eval_passes_and_score_command_prints(tmp_path: Path,
     result = CliRunner().invoke(cli_module.cli, ["eval", "--test", "--tag", "smoke", "--out", str(tmp_path)])
     assert result.exit_code == 0, result.output
     result = CliRunner().invoke(cli_module.cli, ["score", "SFO", "--test"])
-    assert result.exit_code == 0 and "CPS" in result.output and "faa_service_volume" in result.output and "utilization" in result.output
+    assert result.exit_code == 0 and "CPS" in result.output and "faa_profile" in result.output and "utilization" in result.output
 
 
 def test_criterion_16_readme_documents_the_config():

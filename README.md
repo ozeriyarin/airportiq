@@ -98,20 +98,22 @@ Every figure is computed by `src/app/scoring` from the snapshot; the LLM only ch
   component has no data for an airport the weights are renormalized over the others and the answer says so.
 - **Lenses** map the brief's questions onto the components: `expansion` (the CPS), `congestion` (utilization,
   delay), `unmet_demand` (load factor, growth, delay), `long_haul`.
-- **Capacity**, in order of precedence per airport: the FAA annual service volume from the TAF table (measured,
-  140 airports); the FAA capacity-profile hourly rate blended across weather conditions (visual 0.7, marginal 0.2,
-  instrument 0.1) times 4000 hours-equivalent (the FAA service-volume rule of thumb); a runway model fitted by
-  least squares on the airports that have a service volume (RMSE 92,932 operations per year over 137 airports),
-  reported as the uncertainty of every modelled capacity (3 airports: GPI, IWA, XNA; GUM has no runway data and
-  reports capacity as unavailable). Every answer names the source. Where a profile exists its annual cross-check
-  is reported next to the service volume (SFO: 393,000 vs 402,400).
+- **Capacity**, in order of precedence per airport (scoring 1.1.0): the FAA capacity-profile hourly rate
+  (FAA-measured, 31 largest airports, 2014–2019) blended across weather conditions (visual 0.7, marginal 0.2,
+  instrument 0.1) times 4000 hours-equivalent (the FAA service-volume rule of thumb); the FAA annual service
+  volume from the TAF table (109 airports); a runway model fitted by least squares on the airports that have a
+  service volume (RMSE 92,932 operations per year over 137 airports), reported as the uncertainty of every modelled
+  capacity (3 airports: GPI, IWA, XNA; GUM has no runway data and reports capacity as unavailable). Every answer
+  names the source. The profiles lead because the service volume is stale for the largest hubs (16 airports ran
+  above it in FY2024, Denver at 1.96 times); 11 airports still run above their capacity figure and say so in
+  `limitations`. SFO: profile 402,400 vs service volume 393,000.
 - **Uncertainty:** per-year values over the window with min and max, trend = last year minus first year, the
   model RMSE, and `data_through` per source. COVID years 2020–2021 are never a trend or growth endpoint.
 - **Not calibrated:** the weights express the investment reading of the brief (congestion first, growth second,
   traffic mix last). They are assumptions, versioned so any change is auditable, not fitted to realised outcomes.
-- **On the committed snapshot** (`agent score`): SFO has CPS 73.1 (utilization 0.97 of 393,000 operations, load
+- **On the committed snapshot** (`agent score`): SFO has CPS 74.3 (utilization 0.95 of 402,400 operations, load
   factor 0.823, 13.6% long-haul of 190,110 departures in 2025); ANC has 31.0% long-haul of 87,988 departures in
-  2025 with cargo at 59% of movements; BOS leads New England on the expansion lens (76.9). The worked SFO example
+  2025 with cargo at 59% of movements; BOS leads New England on the expansion lens (77.1). The worked SFO example
   with every percentile is in [docs/DESIGN.md](docs/DESIGN.md) and is asserted by a test.
 
 ## Deployment
@@ -140,12 +142,12 @@ therefore the hard backstop. Production would use a persistent database for both
 
 ## Evals
 
-`evals/cases.yaml` holds 23 live cases (11 in scope including the brief's four questions, 3 off topic, 3 injection, 3 false positive, 3 follow-up); every number in an answer must appear in that turn's tool outputs.
+`evals/cases.yaml` holds 43 live cases (26 in scope, 4 off topic, 4 injection, 4 false positive, 5 followup), including the brief's four questions verbatim, every tool, a modelled-capacity airport, the no-capacity airport, bad years and areas, lens and area aliases, and a Hebrew question; every number in an answer must appear in that turn's tool outputs.
 
 | Report | Models | Result | Cost and latency | Note |
 |---|---|---|---|---|
-| `evals/results/v3-baseline` | anthropic:claude-sonnet-5-5 → anthropic:claude-haiku-5-5 → google-gla:gemini-2.5-flash | 23/23 cases, repeat 2, ungrounded runs 0 | 0.4489 USD, cache share 47%, p50 5209 ms | prompt 0.3.0; the first baseline (prompt 0.2.0) was 16/23, every miss but three was the model converting ratios to percentages, fixed by `_pct` tool fields |
-| `evals/results/v3-anthropic-down` | google-gla:gemini-2.5-flash | 21/23 cases, repeat 1, ungrounded runs 1 | 0.0402 USD, cache share 29%, p50 3142 ms | `--down anthropic`: Gemini alone; both misses are presentation (31% vs 31.0, weights as 30% not 0.3) |
+| `evals/results/v3-baseline` | anthropic:claude-sonnet-5-5 → anthropic:claude-haiku-5-5 → google-gla:gemini-2.5-flash | 40/43 cases, repeat 2, ungrounded runs 0 | 0.9335 USD, cache share 47%, p50 6250 ms | prompt 0.3.1, scoring 1.1.0; flaky: sfo-long-haul-2023, fp-override, fu-anc-year-before. The first baseline (prompt 0.2.0, 23 cases) was 16/23: every miss but three was the model converting ratios to percentages, fixed by `_pct` tool fields |
+| `evals/results/v3-anthropic-down` | google-gla:gemini-2.5-flash | 40/43 cases, repeat 1, ungrounded runs 1 | 0.0713 USD, cache share 35%, p50 2894 ms | `--down anthropic`: Gemini alone; misses: brief-3-anc-long-haul, bos-vs-jfk, fp-override |
 | `evals/results/ci-smoke` | TestModel (offline) | statuses and tools only | 0 USD | runs in CI on every push |
 
 ## Assumptions, uncertainty, scoping
@@ -154,7 +156,7 @@ therefore the hard backstop. Production would use a persistent database for both
 |---|---|---|
 | Profitability | The score is a capacity-pressure proxy for where added capacity would be absorbed; construction cost, financing and revenue are out of scope | Stated in the intro, the footer and every `limitations` list |
 | Weights and thresholds | Chosen to express the investment reading of the brief, versioned in `config/scoring.yaml`; not calibrated to realised outcomes | `scoring_version` in every result; first limitation on every score |
-| Capacity | FAA annual service volume for 140 of 144 airports (measured); FAA profile rates for 31 as cross-check (dated 2014–2019); runway model for 3 (RMSE 92,932 ops/yr); GUM has none | `capacity.source` and `uncertainty_operations` in every result; the answer must name the source |
+| Capacity | FAA profile rates for 31 airports (measured, dated 2014–2019); FAA service volume for 109 (a planning value, stale for the largest hubs); runway model for 3 (RMSE 92,932 ops/yr); GUM has none; 11 airports run above their figure | `capacity.source`, `uncertainty_operations` and an explicit limitation when operations exceed the figure; the answer must name the source |
 | Capacity blend and hours | Profile rates blended visual 0.7 / marginal 0.2 / instrument 0.1 and converted with 4,000 hours-equivalent; both are planning heuristics | Config values; README; DESIGN |
 | Delays | BTS On-Time covers domestic reporting carriers only; international and small operators are missing; years under 3,000 departures are dropped | Limitation on every score with a delay value |
 | T-100 vintage | Downloaded by hand on 1.11.2026 through the TranStats form; the manifest records fields and date; refresh is manual | `data_through` per source; manifest; README data section |

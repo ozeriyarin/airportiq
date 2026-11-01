@@ -1,6 +1,6 @@
 # Capacity Pressure Score (CPS). Every threshold, weight and definition the engine uses lives here, versioned.
 # Changing a value is a versioned commit with a fresh eval report. Weights are stated assumptions (see README).
-version: "1.0.0"
+version: "1.1.0"
 
 window: {start: 2023, end: 2025}     # calendar years for BTS On-Time and T-100 (TAF uses its last three actual fiscal years)
 taf_actual_years: 3                  # how many of the latest actual fiscal years feed utilization
@@ -9,8 +9,10 @@ covid_years: [2020, 2021]            # never used in trends or growth windows
 min_departures_per_year: 3000        # On-Time years with fewer domestic departures carry no delay value
 
 capacity:
-  # Precedence per airport: FAA annual service volume (TAF table) > FAA capacity profile rate x hours > runway model.
-  source_order: [faa_service_volume, faa_profile, runway_model]
+  # Precedence per airport: FAA capacity profile rate x hours (FAA-measured hourly rates, the 31 largest airports)
+  # > FAA annual service volume (TAF table; a planning value that is stale for the largest hubs: 16 of them ran above
+  # it in FY2024, Denver at 1.96x) > runway model. Changed 1.11.2026 (scoring 1.1.0) after measuring the ratios.
+  source_order: [faa_profile, faa_service_volume, runway_model]
   profile_blend: {visual: 0.7, marginal: 0.2, instrument: 0.1}   # share of hours assumed in each weather condition
   annual_hours_equivalent: 4000      # FAA annual-service-volume rule of thumb: hourly capacity x ~4,000 usable hours
   runway_model:                      # fitted at load on airports that have a service volume; RMSE is the uncertainty

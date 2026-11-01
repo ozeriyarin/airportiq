@@ -55,7 +55,7 @@ class ToolContext:
                          "carriers (departures, seats, passengers, distance); capacity profiles = FAA Airport Capacity Profiles (2014-2019); "
                          "live status = FAA NAS status feed.")
             lines.append("Lenses for rank_airports/compare_airports: " + "; ".join(f"{n} = {lens.label}" for n, lens in cfg.lenses.items()) + ".")
-            lines.append("Component weights: " + ", ".join(f"{n} {c.weight:g}" for n, c in cfg.components.items()) + f". Long haul = {cfg.long_haul_miles}+ miles.")
+            lines.append("Component weights: " + ", ".join(f"{n} {c.weight:g} ({c.weight * 100:g}%)" for n, c in cfg.components.items()) + f". Long haul = {cfg.long_haul_miles}+ miles.")
         return "\n".join(lines)
 
 
