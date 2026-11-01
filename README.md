@@ -6,6 +6,7 @@ deterministic code over public FAA and BTS data; the LLM interprets the question
 the result inside an enforced JSON schema.
 
 Design: [docs/DESIGN.md](docs/DESIGN.md) (architecture, scoring methodology with a worked SFO example, key tradeoffs, where AI is used).
+Acceptance pass with evidence: [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md).
 Product docs and specs: [agent-os/](agent-os/). Built 1.11.2026 as a one-day take-home.
 
 ## Run it

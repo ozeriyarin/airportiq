@@ -1,0 +1,66 @@
+# Acceptance pass — 1.11.2026, HEAD `e4899f0`
+
+Run in three batches (static, live conversation, rate limit). Every evidence cell is pasted from real output of that
+run; nothing is summarized from memory. Live calls went to https://airportiq.onrender.com; the two local runs are
+marked and ran on the same commit.
+
+## Batch 1 — static
+
+| # | Check | Result | Evidence |
+|---|---|---|---|
+| 1 | Working tree clean, HEAD pushed | PASS | `git status --porcelain` → 0 lines; `## main...origin/main`; HEAD `e4899f0` |
+| 2 | No `.env`, `*.db`, raw data, PDFs, zips or handoff tracked | PASS | `git ls-files` grep for `.env$ / .db$ / handoff / ^data/raw / .pdf$ / .zip$` → none |
+| 3 | No key patterns in any tracked file | PASS | `git grep` for `sk-ant-`, `sk-or-`, `AIza…`, `ghp_`, `gho_`, `xoxb-`, private-key headers → none |
+| 4 | CI green on HEAD | PASS | `gh run list` → `completed success e4899f0` |
+| 5 | Fresh clone, README only: install | PASS | clone into a temp folder, `uv sync` → `+ websockets==17.3` (last line, no error) |
+| 6 | Fresh clone: lint | PASS | `uv run ruff check src tests` → `All checks passed!` |
+| 7 | Fresh clone: full test count | PASS | `uv run pytest -q` → `132 passed in 75.07s` |
+| 8 | Fresh clone: one test chat | PASS | `agent chat --test "What can you help me with?"` → intro with the four questions, `answered · intro · 0.0000 USD` |
+| 9 | Fresh clone: offline smoke | PASS | `agent eval --test` → `12/12 cases, exit code 0` |
+| 10 | Every report in the README table | PASS | `evals/results/` holds ci-smoke, v3-baseline, v3-anthropic-down; each appears once in the README table |
+| 11 | README numbers match the latest reports | PASS | JSON: baseline 23/23, 0.44885 USD, cache 0.467, ungrounded 0, prompt 0.3.0; down 21/23, 0.040237 USD; README lines 146–147 carry 23/23, 21/23, prompt 0.3.0, 0.4489, 0.0402 |
+| 12 | Prompt and config versions match | PASS | `PROMPT_VERSION = "0.3.0"`; agent.yaml 0.1.0, scoring.yaml 1.0.0, prices.yaml 0.3.0; both reports cite prompt 0.3.0 and config 0.1.0 |
+| 13 | README numbers match config | PASS | weights 0.3 / 0.25 / 0.2 / 0.15 / 0.1, 3000 miles, 4000 hours, blend 0.7 / 0.2 / 0.1, RMSE 92,932 all present and equal to `scoring.yaml` and `agent score` |
+| 14 | DESIGN complete | PASS | sections: System architecture; Where AI is used; Data layer; Scoring methodology (with worked SFO example); Repository structure; Key tradeoffs; Security and privacy; What the evals showed; What production would change |
+| 15 | Static UI checks (served HTML) | PASS | `<title>airportiq</title>` ×1; the four example questions present; external `<script src>` ×0; `id="mic"` ×1, `id="speak"` ×1; footer "not investment advice"; `prefers-color-scheme`; input `maxlength="2000"` |
+| 16 | Every spec criterion has a named test, `UNIMPLEMENTED` empty | PASS | `UNIMPLEMENTED: set[str] = set()`; six spec folders v0–v5; `tests/test_spec_coverage.py` → `1 passed` |
+| 17 | Docs drift words | PASS | grep README, DESIGN, demo script, product docs for "still to come / pending / TODO / TBD / PLACEHOLDER" → none |
+| 18 | Scheduled or side jobs, with and without force | N/A | this project has none: `.github/workflows/` holds only `ci.yml`, no cron, no alert or webhook module |
+
+## Batch 2 — live conversation (deployed service unless marked local)
+
+| # | Check | Result | Evidence |
+|---|---|---|---|
+| 19 | `GET /health` | PASS | 200; models Sonnet 5.5 → Haiku 5.5 → Gemini 2.5 Flash; guard `typesafe:jev-latest → anthropic:claude-haiku-5-5`; 144 airports |
+| 20 | `GET /api/docs` | PASS | 200, Swagger UI |
+| 21 | `GET /` | PASS | 200, title present, 9,195 bytes |
+| 22 | `GET /api/stats` without / with wrong token | PASS | 401 `admin token required`; 401 |
+| 23 | `DELETE /api/sessions/{id}` | PASS | 204 |
+| 24 | Empty body / no message | PASS | 422; 422 |
+| 25 | Q1 "Which airports in New England are strong candidates for terminal expansion?" | PASS | answered, Sonnet 5.5, tools `rank_airports, about, airport_score`, 0.0326 USD, 200 words; BOS CPS 76.9 first, BTV second |
+| 26 | Follow-up "Why is the first one on top?" (same session) | PASS | answered from prior context, tools `[]`, 0.0085 USD, 106 words; utilization 99.6% of 412,000 adds 26.4 points |
+| 27 | Q2 "Compare LA and Santa Ana airport congestion levels." | PASS | answered, `compare_airports`, 0.0137 USD, 152 words; SNA 70.3 vs LAX 61.3 on the congestion lens; "I took LA to mean LAX" |
+| 28 | Follow-up "Where do their capacity numbers come from?" | PASS | answered, tools `[]`, 0.0083 USD, 117 words; FAA service volume 675,000 and 355,000, 2014 profiles 163.8/h → 655,200 and 55.2/h → 220,800 as cross-check |
+| 29 | Q3 "What is the percentage of long haul flights out of Anchorage airport?" | PASS | answered, `traffic_mix`, 0.0087 USD, 71 words; 31.0% = 27,305 of 87,988 departures in 2025 |
+| 30 | Follow-up "And the year before?" | PASS | answered, `traffic_mix`, 0.0090 USD, 51 words; 29.9% = 28,080 of 93,961 in 2024 |
+| 31 | Q4 "What is the unmet flight demand in SFO airport and why?" | PASS | answered, `unmet_demand`, 0.0129 USD, 150 words; lens 64.4, "inferred, not a count of flights", load factor 0.8231 (86.5th pct) main driver, 18.93% of 143,415 delayed |
+| 32 | Greeting costs nothing | PASS | "hi" → answered, guardrail `intro`, cost 0.0, latency 0 ms |
+| 33 | Off-topic refusal names the scope | PASS | poem → `refused_off_topic` by `jev-1.14.0`, cost 0.0; text starts "I can only help with capacity pressure at US hub airports: ranking and comparing airports, congestion, unmet demand, traffic mix and current FAA status" |
+| 34 | Injection stopped by the regex layer, no model call | PASS | → `refused_injection`, guardrail `regex`, cost 0.0, latency 0 ms |
+| 35 | False positive answered normally (local, commit e4899f0; live hit the IP limit, see 40) | PASS | "Ignore the West Coast airports; which New England airport is most congested?" → answered, Sonnet 5.5, BOS and BTV named, 0.0447 USD |
+| 36 | One question in the other product language (local) | PASS | Hebrew question → answered in Hebrew by Sonnet 5.5, 0.0129 USD: Boston and Burlington lead, capacity is the FAA service volume (measured) |
+| 37 | Grounding spot check against the engine | PASS | `agent score BOS`: utilization 0.9964 / `utilization_pct` 99.6, `delayed15_pct` 22.72, `load_factor_pct` 81.7, `long_haul_pct` 7.2, contributions 26.4 and 20.38 — every figure in answers 25–26 is a tool field, no model-computed sum; local eval of the 4 brief + 3 follow-up cases: 7/7, `ungrounded runs: 0` |
+| 38 | Fallback: vendor 1 down, vendor 2 answers | PASS | `agent eval --down anthropic` on the ANC case: models `google-gla:gemini-2.5-flash`, 1/1, served by gemini-2.5-flash, 0.0015 USD; plus the committed `v3-anthropic-down` report 21/23 all served by Gemini |
+| 39 | Fallback: all vendors down, clean unavailable, no crash | PASS | invalid keys for all vendors at runtime → log `all models failed: FallbackExceptionGroup(…401…, ConnectionError)`; reply "All model providers are unavailable right now. Please try again in a minute." status `unavailable`, 0.0000 USD, exit 0 |
+
+## Batch 3 — rate limit (last; blocks this IP for the window)
+
+| # | Check | Result | Evidence |
+|---|---|---|---|
+| 40 | 429 with Retry-After using free turns | PASS | `POST /api/chat {"message":"hi"}` → `HTTP/1.1 429 Too Many Requests`, `retry-after: 2678`, body `Too many requests from your address. Try again later.` The window had been consumed by the live checks above together with browser use from the same network during the session, which is why checks 35–36 moved to a local run. |
+
+## Left to the owner
+
+- Phone pass on https://airportiq.onrender.com: keyboard does not cover the input, last bubble clears the sticky bar, example placeholder rotates, dark mode follows the system.
+- Voice: press the mic in Chrome or Edge, ask one of the four questions, hear the answer read back; toggle the speaker and confirm the preference survives a reload.
+- Provider consoles: confirm the caps recorded as set on 1.11.2026 in Anthropic Limits, Google Cloud budget and the TypeSafe dashboard match `BUDGET_USD` (10 USD).
