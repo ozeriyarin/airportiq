@@ -42,6 +42,7 @@ over FAA and BTS data and the LLM only chooses tools and explains."
 
 ## Honest answers
 
+- "Why a separate guard model?" Measured: Jev and Haiku gave identical labels on all 32 guard runs; Jev decides in 223 ms vs 786 ms, costs 4.5x per call (a thirtieth of a cent), and defers to Haiku when unsure (4 of 23 runs). Kept on latency, rule written before the run.
 - "Profitability?" The score is a capacity-pressure proxy; cost, financing and revenue are out of scope.
 - "How sure?" Bands per year, model RMSE, data vintage per source, COVID years excluded; every answer carries them.
 - "Why profiles first?" The FAA service volume is stale for the big hubs (Denver ran at 1.96 times it); the profiles are measured rates. Found by checking the ratios, changed the same day, recorded in the v2 spec as Round 2.

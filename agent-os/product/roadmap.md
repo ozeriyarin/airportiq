@@ -66,7 +66,7 @@ report (when prompts/models change) → README/roadmap → commit.
 
 6. ~~v5 voice~~ shipped. Was: browser Web Speech mic and read-aloud in the chat page; nothing reaches the server.
 7. ~~v6 OpenSky~~ shipped. Was: registered-account client for aircraft currently around an airport as a second live signal.
-8. **v7 cost** — measured cache share and a Haiku-as-answerer experiment with the adoption rule stated first.
+8. **v7 cost** — guard measured 1.11.2026 (`evals/results/guard-jev` 30/32, `guard-haiku` 32/32, identical labels; Jev kept on latency 223 vs 786 ms p50 at 4.5x the per-call cost; 0.35 USD for both runs). Still open: cache share over time and a Haiku-as-answerer experiment with the adoption rule stated first.
 
 ## Out of scope
 

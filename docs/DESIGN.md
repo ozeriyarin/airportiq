@@ -49,7 +49,7 @@ browser chat page ──HTTP──▶ FastAPI (app/api)
 | Step | AI? | What |
 |---|---|---|
 | Understanding the question, choosing tools, writing the explanation | yes | Claude Sonnet 5.5 (fallbacks Haiku, Gemini) inside an enforced JSON schema |
-| Screening for scope and prompt injection | yes, cheap | TypeSafe Jev decision model, Haiku fallback; policy in code |
+| Screening for scope and prompt injection | yes, cheap | TypeSafe Jev decision model, Haiku fallback; policy in code. Measured 1.11.2026 on 16 guard cases × 2: identical labels from both, Jev 223 ms p50 vs Haiku 786 ms, 0.00031 vs 0.00007 USD per call, Jev unsure (fell through) on 4 of 23 screened runs; kept on latency under a rule stated before the run |
 | Every number, ranking, percentage, capacity figure | **no** | deterministic engine over committed snapshots (v2) |
 | Region, division and name resolution | **no** | registry YAML with aliases (v1) |
 | Refusal, intro and error text | **no** | fixed strings in code |

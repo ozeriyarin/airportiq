@@ -46,7 +46,11 @@ uv run pytest -q
   through Pydantic AI's `FallbackModel`; per-model HTTP retries on 429/5xx/network with Retry-After; vendor SDK
   retries off. All models down → `status: unavailable`.
 - **Guard:** regex layer → fixed intro for greetings → TypeSafe Jev screening (confidence ≥ 0.7, else Claude Haiku)
-  with the previous question as context → fixed refusal strings. Refusals spend nothing.
+  with the previous question as context → fixed refusal strings. Refusals spend nothing. Measured 1.11.2026 on the 16
+  guard cases (`evals/guard.yaml`, repeat 2): Jev and Haiku produced identical labels on every run (0% false positives,
+  0% misses for both); Jev screens in 223 ms p50 against Haiku's 786 ms at 0.00031 USD per call against 0.00007, and
+  fell through to Haiku on 4 of 23 screened runs. Adoption rule stated before the run: keep Jev only if its guard pass
+  rate is at least Haiku's and its cost or latency is lower; kept on latency.
 - **Budget:** SQLite ledger enforces `BUDGET_USD` (10) per month before every paid call; 0.25 USD and 16 model
   requests per turn; 20 requests per IP per hour, 200 per day.
 - **API:** `GET /health`, `POST /api/chat`, `DELETE /api/sessions/{id}`, `GET /api/stats` (admin token), chat page at `/`.
@@ -173,6 +177,8 @@ Measured result on the same 43 cases with repeat 2: 0 of 86 runs hit the 16-requ
 |---|---|---|---|---|
 | `evals/results/v6-baseline` | anthropic:claude-sonnet-5-5 → anthropic:claude-haiku-5-5 → google-gla:gemini-2.5-flash | 43/43 cases, repeat 2, ungrounded runs 0 | 0.7841 USD, cache share 47%, p50 5598 ms, p95 10699 ms | prompt 0.4.0, scoring 1.1.0, after the loop fixes: 0 of 86 runs hit the request ceiling. Pre-fix baseline kept as `evals/results/v3-baseline`: 40/43 with 3 flaky cases, 0.9335 USD, p95 12616 ms |
 | `evals/results/v6-anthropic-down` | google-gla:gemini-2.5-flash | 41/43 cases, repeat 1, ungrounded runs 0 | 0.0781 USD, cache share 34%, p50 3124 ms, p95 9270 ms | `--down anthropic`: Gemini alone; misses: brief-3-anc-long-haul, fp-override (formatting 31% for 31.0; an honest 'cannot confirm'). Pre-fix run kept as `evals/results/v3-anthropic-down`: 40/43 |
+| `evals/results/guard-jev` | guard typesafe:jev-latest → claude-haiku-5-5 | 30/32 guard runs; guard labels 32/32 | 0.2004 USD; screening 0.00031 USD and 223 ms p50 per call | 16 guard cases, repeat 2; the two end-to-end misses were the answer model (one request-ceiling hit, one honest 'cannot confirm'), not guard decisions |
+| `evals/results/guard-haiku` | guard claude-haiku-5-5 alone (`--down typesafe`) | 32/32 guard runs; guard labels 32/32 | 0.1478 USD; screening 0.00007 USD and 786 ms p50 per call | same cases; identical labels to Jev on every run |
 | `evals/results/ci-smoke` | TestModel (offline) | statuses and tools only | 0 USD | runs in CI on every push |
 
 ## Assumptions, uncertainty, scoping
