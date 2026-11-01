@@ -436,3 +436,20 @@ def test_criterion_26_test_mode_costs_zero(tmp_path: Path, monkeypatch):
     assert result.exit_code == 0 and "0.0000 USD" in result.output and "answered" in result.output, result.output
     ledger = Budget(tmp_path / "ledger.db", cap_usd=15).stats()
     assert ledger.calls == 1 and ledger.spent_usd == 0 and all(r.cost_usd == 0 for r in ledger.recent)
+
+
+def test_criterion_27_open_reservations_released_on_exit_and_stale_ones_at_startup(tmp_path: Path):
+    clock = [datetime(2026, 11, 1, 12, 0, tzinfo=UTC)]
+    b = Budget(tmp_path / "b.db", cap_usd=1.0, now=lambda: clock[0])
+    b.reserve(0.06, kind="turn", model="pending")  # a process that dies here leaves this row open
+    kept = b.reserve(0.06, kind="turn", model="pending")
+    b.settle(kept, cost_usd=0.01, model="m", input_tokens=1, output_tokens=1, latency_ms=1)
+    assert len({r.id for r in b.stats().recent if r.status == "reserved"}) == 1
+    assert b.release_open() == 1 and b.release_open() == 0
+    assert not [r for r in b.stats().recent if r.status == "reserved"] and b.month_to_date() == pytest.approx(0.01)
+    b2 = Budget(tmp_path / "b.db", cap_usd=1.0, now=lambda: clock[0])
+    old = b2.reserve(0.06, kind="turn", model="pending")
+    b2._open.clear()  # simulate a killed worker: nothing will settle or release it
+    clock[0] = datetime(2026, 11, 1, 12, 15, tzinfo=UTC)
+    fresh = Budget(tmp_path / "b.db", cap_usd=1.0, now=lambda: clock[0])  # startup sweep
+    assert old not in {r.id for r in fresh.stats().recent} and fresh.month_to_date() == pytest.approx(0.01)

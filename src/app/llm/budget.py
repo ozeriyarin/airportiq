@@ -7,11 +7,12 @@ spend limit is the second line of defence; this ledger is the first.
 
 from __future__ import annotations
 
+import atexit
 import sqlite3
 import uuid
 from collections.abc import Callable
-from dataclasses import dataclass
-from datetime import UTC, datetime
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -72,11 +73,32 @@ class Budget:
     cap_usd: float
     now: Callable[[], datetime] = lambda: datetime.now(UTC)
 
+    stale_after_min: int = 10  # a reservation older than this with no settle or release belongs to a dead process
+    _open: set[str] = field(default_factory=set, repr=False)
+
     def __post_init__(self) -> None:
         if isinstance(self.db_path, Path):
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as conn:
             conn.executescript(_SCHEMA)
+        self.release_stale()
+        atexit.register(self.release_open)
+
+    def release_open(self) -> int:
+        """Release every reservation this process still holds (normal exit, or an unhandled crash on the way out)."""
+        open_ids, self._open = list(self._open), set()
+        if not open_ids:
+            return 0
+        with self._connect() as conn:
+            conn.executemany("DELETE FROM spend WHERE id=? AND status='reserved'", [(rid,) for rid in open_ids])
+        return len(open_ids)
+
+    def release_stale(self) -> int:
+        """Delete reservations older than `stale_after_min` that no process can settle any more (a killed worker)."""
+        cutoff = (self.now() - timedelta(minutes=self.stale_after_min)).isoformat()
+        with self._connect() as conn:
+            cur = conn.execute("DELETE FROM spend WHERE status='reserved' AND at < ?", (cutoff,))
+        return cur.rowcount
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(str(self.db_path), isolation_level=None, check_same_thread=False)
@@ -100,11 +122,13 @@ class Budget:
                 (rid, month, kind, model, estimate_usd, self.now().isoformat()),
             )
             conn.execute("COMMIT")
+        self._open.add(rid)
         return rid
 
     def settle(
         self, rid: str, *, cost_usd: float, model: str, input_tokens: int, output_tokens: int, latency_ms: int
     ) -> None:
+        self._open.discard(rid)
         with self._connect() as conn:
             conn.execute(
                 "UPDATE spend SET cost_usd=?, model=?, input_tokens=?, output_tokens=?, latency_ms=?, status='settled' WHERE id=?",
@@ -113,6 +137,7 @@ class Budget:
 
     def release(self, rid: str, *, failed: bool) -> None:
         """A call that never reached the provider costs nothing; one that errored mid-way keeps its estimate."""
+        self._open.discard(rid)
         with self._connect() as conn:
             if failed:
                 conn.execute("UPDATE spend SET status='failed' WHERE id=?", (rid,))
