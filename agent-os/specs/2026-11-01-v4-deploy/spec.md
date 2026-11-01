@@ -1,6 +1,6 @@
 # Spec: v4 deploy
 
-Status: shaped 1.11.2026 (roadmap item approved with the v0–v2 specs).
+Status: shipped 1.11.2026, commit `dd57e32`, 6 criterion tests (provider-cap dates awaited from the owner).
 
 ## Goal
 

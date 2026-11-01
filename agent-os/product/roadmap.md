@@ -22,6 +22,15 @@ report (when prompts/models change) → README/roadmap → commit.
   model, RMSE 92,932 ops over 137 airports), lenses, eight tools, `agent score`, worked SFO example (CPS 73.1) asserted by
   a test; 16 criterion tests; 115 tests total.
 
+- **v3 agent** (1.11.2026, spec `agent-os/specs/2026-11-01-v3-agent`, commit `dd57e32`): prompt 0.3.0 (tool guide, number
+  rules, `_pct` fields so the model never converts ratios), 23-case live set, baseline 23/23 (repeat 2, 0 ungrounded,
+  0.45 USD, 47% cache), `--down anthropic` 21/23 served by Gemini alone; 7 criterion tests.
+
+- **v4 deploy** (1.11.2026, spec `agent-os/specs/2026-11-01-v4-deploy`, commit `dd57e32`): live at
+  https://airportiq.onrender.com, dated `agent verify` record, assumptions / uncertainty / scoping table, DESIGN
+  closeout (scoring methodology, key tradeoffs, where AI is used), demo script; 6 criterion tests (provider-cap
+  dates awaited from the owner).
+
 ## Phase 1: MVP (must ship today)
 
 1. ~~v0 platform~~ shipped. Was: lift the scaffold: model chain (Sonnet → Haiku → Gemini) with retries and fallback, Jev → Haiku
@@ -34,9 +43,9 @@ report (when prompts/models change) → README/roadmap → commit.
 3. ~~v2 capacity KPI~~ shipped. Was: `config/scoring.yaml`, pure engine (five components, percentile normalization, weighted
    CPS, per-year band, trend, capacity model calibrated on the FAA profiles), tools that never raise, worked
    example (SFO) recomputed by a test.
-4. **v3 agent** — domain prompts, tools wired, eval cases (the four brief questions plus off_topic / injection /
+4. ~~v3 agent~~ shipped. Was: domain prompts, tools wired, eval cases (the four brief questions plus off_topic / injection /
    false_positive / followup), baseline report and `--down anthropic` report.
-5. **v4 deploy** — Render live, `agent verify` record, provider caps dated, DESIGN.md complete (scoring
+5. ~~v4 deploy~~ shipped. Was: Render live, `agent verify` record, provider caps dated, DESIGN.md complete (scoring
    methodology, key tradeoffs, where AI is used), demo script.
 
 ## Phase 2: Bonus (only if time remains)

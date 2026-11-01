@@ -1,6 +1,6 @@
 # Spec: v3 agent
 
-Status: shaped 1.11.2026 (roadmap item approved with the v0–v2 specs); implemented in the same session.
+Status: shipped 1.11.2026, commit `dd57e32`, 7 criterion tests.
 
 ## Goal
 
