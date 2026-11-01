@@ -1,0 +1,30 @@
+# Agent runtime configuration. Non-secret; secrets live in .env. Versioned so eval reports can cite it.
+version: "0.1.0"
+name: "airportiq"
+
+models:
+  # Tried in order by Pydantic AI's FallbackModel. Entries whose vendor key is missing are skipped at startup.
+  # Order = same-vendor cheaper model first, then another vendor, so a vendor outage still gets an answer.
+  # No OpenAI entry (owner decision 1.11.2026).
+  chain:
+    - "anthropic:claude-sonnet-5-5"
+    - "anthropic:claude-haiku-5-5"
+    - "google-gla:gemini-2.5-flash"
+  # Guardrail: Jev (TypeSafe decision model) first, Haiku when Jev is unavailable or unsure.
+  guard_decision: "typesafe:jev-latest"
+  guard_fallback: "anthropic:claude-haiku-5-5"
+  guard_confidence: 0.7          # below this per-field confidence the guard falls through to the LLM
+  timeout_s: 30                  # per HTTP attempt; a hanging provider fails over after this
+  retry_attempts: 3              # HTTP attempts per model on 429/5xx/network before moving to the next model
+  retry_max_wait_s: 20           # cap on Retry-After / exponential backoff waits
+  cache: true                    # prompt caching of the static prefix (instructions, tools, messages) on Anthropic
+
+limits:
+  max_message_chars: 2000
+  max_turns: 12                  # conversation memory kept per session
+  model_requests_per_turn: 16    # tool-loop ceiling (UsageLimits.request_limit); a normal answer needs 2-4
+  per_turn_usd: 0.25             # UsageLimits.cost_limit; a normal Sonnet turn with tools costs ~0.06
+  per_turn_estimate_usd: 0.06    # reserved against the monthly cap before the call
+  per_ip_per_hour: 20
+  global_per_day: 200
+  session_ttl_s: 3600

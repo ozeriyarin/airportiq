@@ -1,0 +1,10 @@
+# USD per 1M tokens, used only when Pydantic AI's genai-prices has no price for a model.
+# Unknown models are charged the most expensive row.
+# Verified 2026-11-01: Anthropic rows from the official model table (Sonnet 5.5 2.00/10.00, Haiku 5.5 0.10/0.50);
+# Gemini and Jev from third-party price trackers, re-check before relying on them for budgeting.
+version: "0.3.0"
+verified: "2026-11-01"
+claude-sonnet-5-5: {input: 2.00, output: 10.00}
+claude-haiku-5-5: {input: 0.10, output: 0.50}
+gemini-2.5-flash: {input: 0.30, output: 2.50}
+jev-latest: {input: 0.50, output: 0.00}

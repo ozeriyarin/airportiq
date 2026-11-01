@@ -1,0 +1,30 @@
+# Render Blueprint. Free tier: sleeps after 15 min idle (30-60 s cold start); disk is ephemeral, so the spend
+# ledger resets on redeploy. The provider-side spend limits are the hard backstop regardless.
+services:
+  - type: web
+    name: airportiq
+    runtime: python
+    plan: free
+    region: frankfurt
+    buildCommand: pip install uv && uv sync --frozen --no-dev
+    startCommand: uv run agent serve --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: TYPESAFE_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: BUDGET_USD
+        value: "10"
+      - key: ADMIN_TOKEN
+        generateValue: true
+      - key: DB_PATH
+        value: /tmp/agent.db
+      - key: FAA_USER_AGENT
+        value: "Mozilla/5.0 airportiq/0.1 (github.com/ozeriyarin/airportiq)"
