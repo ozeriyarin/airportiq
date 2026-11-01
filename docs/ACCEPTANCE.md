@@ -90,6 +90,8 @@ capacity figure (11 airports). The eval set grew from 23 to 43 cases. Re-verific
 | S4 | `agent accept` after the v6 redeploy (`9ec7341`) | 16/18 | the ANC question looped again (cannot_answer, 0 USD, 24 s) and its follow-up therefore lacked context; everything else PASS. The repeat guard stops the tool from re-running but not the model from re-asking, so the 16-request ceiling still ends the turn. Render now logs the call sequence of such a turn; owner to read it. |
 | S5 | `aircraft_now` on Render without credentials | FAIL, fixed | anonymous call from Render's shared egress address returned 429 and the validating client raised before the quota branch; fixed so the 429 and its Retry-After are reported (offline test added); with `OPENSKY_CLIENT_ID` / `OPENSKY_CLIENT_SECRET` set in Render the registered quota (4,000 a day) applies |
 
+| S6 | `agent verify` and `agent accept` after the loop-fix redeploy (`c96c838`, CI green) | PASS | verify: /health ok, three models, Jev guard, 144 airports; chat answered by claude-sonnet-5-5, 20146 ms, 0.0355 USD; accept 18/18, exit 0 |
+
 ## Left to the owner
 
 - Phone pass on https://airportiq.onrender.com: keyboard does not cover the input, last bubble clears the sticky bar, example placeholder rotates, dark mode follows the system.

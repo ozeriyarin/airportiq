@@ -136,10 +136,10 @@ redeploys). Verification record from `uv run agent verify https://airportiq.onre
 Verified 2026-11-01 at https://airportiq.onrender.com
 - /health: status ok, version 0.1.0, models anthropic:claude-sonnet-5-5 -> anthropic:claude-haiku-5-5 -> google-gla:gemini-2.5-flash,
   guard typesafe:jev-latest → anthropic:claude-haiku-5-5, data 144 airports, taf 1976..2055, ontime 202301..202512, t100 2023..2025
-- /api/chat: status answered, served by claude-sonnet-5-5, tools ['rank_airports', 'about', 'airport_score'], 12529 ms, 0.0277 USD
+- /api/chat: status answered, served by claude-sonnet-5-5, tools ['rank_airports', 'about', 'airport_score'], 20146 ms, 0.0355 USD
 ```
 
-(Re-verified after the scoring 1.1.0 redeploy, commit `eee30c3`; the first record on the same day read 14610 ms, 0.0146 USD.)
+(Re-verified after the v6 and loop-fix redeploy, commit `c96c838`; `agent accept` on the same build: 18/18, exit 0. Earlier records the same day: 14610 ms / 0.0146 USD at the first deploy, 12529 ms / 0.0277 USD after scoring 1.1.0.)
 
 `uv run agent accept https://airportiq.onrender.com` repeats the live acceptance pass (endpoints, the four brief
 questions, follow-ups, guard layers) from `evals/accept/cases.yaml` and exits 0 only when every row passes; the
