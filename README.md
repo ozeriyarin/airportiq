@@ -9,6 +9,10 @@ Design: [docs/DESIGN.md](docs/DESIGN.md) (architecture, scoring methodology with
 Acceptance pass with evidence: [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md).
 Product docs and specs: [agent-os/](agent-os/). Built 1.11.2026 as a one-day take-home.
 
+## License
+
+MIT, see [LICENSE](LICENSE).
+
 ## Run it
 
 Requires Python 3.12 and [uv](https://docs.astral.sh/uv/).
