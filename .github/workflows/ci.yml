@@ -1,0 +1,27 @@
+# CI: lint, offline tests (fake models, no secrets, no spend), offline eval smoke.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --frozen
+      - name: ruff
+        run: uv run ruff check src tests
+      - name: tests (offline)
+        run: uv run pytest -q
+      - name: eval smoke (offline TestModel, checks the runner only)
+        run: uv run agent eval --test --tag ci-smoke || test $? -ne 1
