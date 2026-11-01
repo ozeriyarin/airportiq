@@ -152,7 +152,9 @@ therefore the hard backstop. Production would use a persistent database for both
 
 ## Evals
 
-`evals/cases.yaml` holds 43 live cases (26 in scope, 4 off topic, 4 injection, 4 false positive, 5 followup), including the brief's four questions verbatim, every tool, a modelled-capacity airport, the no-capacity airport, bad years and areas, lens and area aliases, and a Hebrew question; every number in an answer must appear in that turn's tool outputs.
+`evals/cases.yaml` holds 43 live cases (26 in scope, 4 off topic, 4 injection, 4 false positive, 5 followup), including the brief's four questions verbatim, every tool, a modelled-capacity airport, the no-capacity airport, bad years and areas, lens and area aliases, and a Hebrew question; every number in an answer must appear in that turn's tool outputs. The flaky cases in the
+baseline trace to one intermittent tool-call loop, since fixed in code (a repeated identical call in one turn returns
+`Repeated` instead of running again, commit `cbe743d`); the committed report predates that fix.
 
 | Report | Models | Result | Cost and latency | Note |
 |---|---|---|---|---|

@@ -202,7 +202,12 @@ same treatment: the facts now state weights in both forms and every band value c
 0.3.1, scoring 1.1.0). The final baseline is 40 of 43 with no failed case and three flaky cases that share one
 root cause: in two of 86 runs the model looped on tool calls until the 16-request ceiling stopped the turn
 (`cannot_answer`, zero spend), and one of those was a prior turn, which left its follow-up without context. The
-loop is intermittent and not yet reproduced in isolation; it is recorded here rather than hidden. The third flaky
+loop was later caught in the act with `capture_run_messages`: the model re-issued `traffic_mix` with identical
+arguments fifteen times in one turn, and even "successful" turns of that kind cost ten times a normal one. The
+fix is deterministic, not a prompt plea: every tool is wrapped so a repeated identical call in the same turn
+returns a `Repeated` result pointing at the earlier answer, and a limit-exceeded turn logs its call sequence
+(names and arguments, never content). The committed baseline predates the guard; the live acceptance pass after
+it is in `docs/ACCEPTANCE.md`. The third flaky
 case ("can an analyst override the weights?") drew an honest "I cannot confirm" once, which the case should have
 accepted. Gemini alone (`--down anthropic`) passes 40 of 43, missing on formatting (31% for 31.0, a rounded
 percentile) and two numbers it computed itself. The reports under `evals/results/` are the evidence; the README

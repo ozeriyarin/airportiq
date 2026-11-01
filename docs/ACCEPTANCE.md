@@ -79,6 +79,14 @@ capacity figure (11 airports). The eval set grew from 23 to 43 cases. Re-verific
 | R6 | Offline suite after the switch | PASS | ruff clean; `132 passed` |
 | R7 | Live service after redeploy (commit `eee30c3`, CI green) | PASS | `agent verify`: /health ok, three models, Jev guard, 144 airports; /api/chat answered by claude-sonnet-5-5 with rank_airports, about, airport_score, 12529 ms, 0.0277 USD; a live SFO capacity question names the FAA profile and 402,400 |
 
+## Structure pass — `agent accept` against the live service
+
+| # | Check | Result | Evidence |
+|---|---|---|---|
+| S1 | `agent accept https://airportiq.onrender.com` at commit `cc83641` | 17/18, exit 1 | six endpoint rows PASS (200, 200, 200, 401/401, 204, 422/422); the brief's four questions, three follow-ups, greeting (intro, 0.0000 USD), off-topic (jev), injection (regex), false positive and the Hebrew question PASS; brief-3 (ANC) came back as a non-200 from the service. Re-asking it twice reproduced the intermittent tool loop (second run `cannot_answer` after 20 s, 0 USD). |
+| S2 | Loop traced and fixed | PASS | `capture_run_messages` on a limit-exceeded turn: `traffic_mix` called 15 times with identical arguments; fix: every tool wrapped so a repeated identical call returns `Repeated` (commit `cbe743d`), offline test with a scripted model that repeats a call |
+| S3 | `agent accept https://airportiq.onrender.com` after the redeploy of `cbe743d` | PASS | 18/18 checks, exit 0; brief-3 (ANC): answered, claude-sonnet-5-5, tools traffic_mix + about, 0.0108 USD, 6904 ms, 65 words; every other row as in S1 |
+
 ## Left to the owner
 
 - Phone pass on https://airportiq.onrender.com: keyboard does not cover the input, last bubble clears the sticky bar, example placeholder rotates, dark mode follows the system.
