@@ -1,4 +1,4 @@
-# Acceptance pass — 1.11.2026, HEAD `e4899f0`
+# Acceptance pass — 1.11.2026, HEAD `e4899f0` (batches 1–3); Round 2 addendum at HEAD `eee30c3`
 
 Run in three batches (static, live conversation, rate limit). Every evidence cell is pasted from real output of that
 run and names the command that produced it; nothing is summarized from memory. The live checks in batch 2 were first
@@ -20,7 +20,7 @@ marked and ran on the same commit.
 | 8 | Fresh clone: one test chat | PASS | `agent chat --test "What can you help me with?"` → intro with the four questions, `answered · intro · 0.0000 USD` |
 | 9 | Fresh clone: offline smoke | PASS | `agent eval --test` → `12/12 cases, exit code 0` |
 | 10 | Every report in the README table | PASS | `evals/results/` holds ci-smoke, v3-baseline, v3-anthropic-down; each appears once in the README table |
-| 11 | README numbers match the latest reports | PASS | JSON: baseline 23/23, 0.44885 USD, cache 0.467, ungrounded 0, prompt 0.3.0; down 21/23, 0.040237 USD; README lines 146–147 carry 23/23, 21/23, prompt 0.3.0, 0.4489, 0.0402 |
+| 11 | README numbers match the latest reports | PASS | JSON: baseline 23/23, 0.44885 USD, cache 0.467, ungrounded 0, prompt 0.3.0; down 21/23, 0.040237 USD; README lines 146–147 carry 23/23, 21/23, prompt 0.3.0, 0.4489, 0.0402. These are the 23-case baseline figures, superseded by R4 and R5 in the addendum (43 cases, prompt 0.3.1). |
 | 12 | Prompt and config versions match | PASS | `PROMPT_VERSION = "0.3.0"`; agent.yaml 0.1.0, scoring.yaml 1.0.0, prices.yaml 0.3.0; both reports cite prompt 0.3.0 and config 0.1.0 |
 | 13 | README numbers match config | PASS | weights 0.3 / 0.25 / 0.2 / 0.15 / 0.1, 3000 miles, 4000 hours, blend 0.7 / 0.2 / 0.1, RMSE 92,932 all present and equal to `scoring.yaml` and `agent score` |
 | 14 | DESIGN complete | PASS | sections: System architecture; Where AI is used; Data layer; Scoring methodology (with worked SFO example); Repository structure; Key tradeoffs; Security and privacy; What the evals showed; What production would change |
