@@ -6,11 +6,15 @@ report (when prompts/models change) → README/roadmap → commit.
 
 ## Shipped
 
-(none yet; kickoff 1.11.2026, repo skeleton commits `9ec1bcc`, `b897236`)
+- **v0 platform** (1.11.2026, spec `agent-os/specs/2026-11-01-v0-platform`, commit `4ca2322`): platform lifted from
+  hubrisk and stripped of its domain; chain Sonnet 5.5 → Haiku 5.5 → Gemini 2.5 Flash (no OpenAI), Jev → Haiku guard
+  with follow-up context, fixed intro, SQLite ledger, FastAPI API + chat page, sessions, rate limits, eval runner
+  with grounding check, `--down` / `--model`, prompt caching, `agent verify`, CI, Render blueprint; 84 offline tests
+  including 25 criterion tests; smoke eval 10/10 (`evals/results/ci-smoke`).
 
 ## Phase 1: MVP (must ship today)
 
-1. **v0 platform** — lift the scaffold: model chain (Sonnet → Haiku → Gemini) with retries and fallback, Jev → Haiku
+1. ~~v0 platform~~ shipped. Was: lift the scaffold: model chain (Sonnet → Haiku → Gemini) with retries and fallback, Jev → Haiku
    guard, budget ledger, FastAPI API + chat page, sessions, rate limits, eval runner, prompt caching, CI, Render
    Blueprint, `agent verify`. Keyless run with `MODEL_MODE=test`.
 2. **v1 airports and data** — generated registry of ~130 hub airports with Census region/division and aliases;

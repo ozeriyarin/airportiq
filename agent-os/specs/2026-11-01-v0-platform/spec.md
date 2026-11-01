@@ -1,6 +1,6 @@
 # Spec: v0 platform
 
-Status: shaped 1.11.2026, awaiting owner approval.
+Status: shipped 1.11.2026, commit `4ca2322`, 84 tests green, smoke eval 10/10.
 
 ## Goal
 
