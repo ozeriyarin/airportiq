@@ -30,6 +30,11 @@ class Turn(BaseModel):
     served_by: str | None = None
     failed_attempts: list[str] = Field(default_factory=list)
     guardrail: str | None = None  # "regex" or the guard model name, when a guardrail decided
+    guard_model: str | None = None  # the model that screened this turn, also when it passed
+    guard_confidence: float | None = None  # lowest per-field confidence the decision model reported
+    guard_fell_through: bool = False  # the decision model errored or was unsure and the fallback decided
+    guard_latency_ms: int = 0
+    guard_cost_usd: float = 0.0  # screening cost estimated from the price table (not ledgered)
     tools_used: list[str] = Field(default_factory=list)
     model_requests: int = 0
     input_tokens: int = 0

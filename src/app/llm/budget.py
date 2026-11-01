@@ -61,7 +61,11 @@ CREATE INDEX IF NOT EXISTS spend_month ON spend(month);
 
 def estimate_cost(prices: dict[str, Price], model: str, input_tokens: int, output_tokens: int) -> float:
     """Price a call from the table; an unknown model is charged the most expensive row (refusing is recoverable)."""
-    price = prices.get(model) or prices.get(model.split(":", 1)[-1])
+    name = model.split(":", 1)[-1]
+    price = prices.get(model) or prices.get(name)
+    if price is None:  # a versioned name such as jev-1.14.0 prices from its family row jev-latest
+        family = name.split("-")[0]
+        price = next((p for k, p in prices.items() if k.split("-")[0] == family), None)
     if price is None:
         price = max(prices.values(), key=lambda p: p.input + p.output) if prices else Price(input=15.0, output=75.0)
     return (input_tokens * price.input + output_tokens * price.output) / 1_000_000
@@ -85,7 +89,9 @@ class Budget:
         atexit.register(self.release_open)
 
     def release_open(self) -> int:
-        """Release every reservation this process still holds (normal exit, or an unhandled crash on the way out)."""
+        """Release every reservation this process still holds (normal exit, or an unhandled crash on the way out).
+        Trade-off, chosen by the owner: a call billed by the provider just before the crash is then not counted here;
+        the provider-console caps are the backstop for that case."""
         open_ids, self._open = list(self._open), set()
         if not open_ids:
             return 0

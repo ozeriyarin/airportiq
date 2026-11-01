@@ -144,11 +144,12 @@ class Service:
         captured: list[ModelMessage] = []
         try:
             verdict = await self.guard.screen(message, previous=conversation.last_question)
+            guard_fields = self._guard_fields(verdict)
             if verdict.label != "in_scope":
                 self.budget.release(rid, failed=False)
                 status = "refused_injection" if verdict.label == "injection" else "refused_off_topic"
                 text = prompts.REFUSAL_INJECTION if verdict.label == "injection" else prompts.REFUSAL_OFF_TOPIC
-                return Turn(status=status, answer=text, guardrail=verdict.decided_by, latency_ms=elapsed())
+                return Turn(status=status, answer=text, guardrail=verdict.decided_by, latency_ms=elapsed(), **guard_fields)
 
             with capture_run_messages() as captured:
                 result = await self.agent.run(
@@ -201,4 +202,13 @@ class Service:
             cache_write_tokens=usage.cache_write_tokens,
             cost_usd=cost,
             latency_ms=elapsed(),
+            **guard_fields,
         )
+
+    def _guard_fields(self, verdict) -> dict:
+        confidence = min(verdict.confidence.values()) if verdict.confidence else None
+        return {
+            "guard_model": verdict.decided_by, "guard_confidence": confidence, "guard_fell_through": bool(verdict.failed_attempts),
+            "guard_latency_ms": verdict.latency_ms,
+            "guard_cost_usd": estimate_cost(self.prices, verdict.decided_by, verdict.input_tokens, verdict.output_tokens),
+        }

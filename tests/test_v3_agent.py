@@ -6,6 +6,7 @@ import json
 import re
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 from app import cli as cli_module
@@ -120,3 +121,69 @@ async def test_criterion_8_repeated_tool_call_returns_repeated_instead_of_rerunn
     assert turn.status == "answered" and len(returns) == 3
     assert "BOS" in str(returns[0].content) and "Repeated" in type(returns[1].content).__name__ and "already" in str(returns[2].content)
     assert tool_call_trace(conv.history) == ["list_airports{'area': 'New England'}"] * 3
+
+
+async def test_criterion_9_per_tool_ceiling_and_bad_year_returns_latest(config, prices, budget):
+    from pydantic_ai import ModelMessage, ModelResponse, ToolCallPart, ToolReturnPart
+    from pydantic_ai.models.function import AgentInfo, FunctionModel
+
+    from app.agent.core import Conversation, Service, build_agent
+    from app.agent.tools import ToolContext
+    from app.data.registry import AirportRegistry
+    from app.decide.guard import Guard
+    from tests.fakes import USAGE, final, screening_model
+
+    n = {"calls": 0}
+
+    def exploring(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:  # different args every time, like the captured loop
+        n["calls"] += 1
+        if n["calls"] <= 6:
+            return ModelResponse(parts=[ToolCallPart("list_airports", {"area": ["New England", "West", "CA", "TX", "FL", "MA"][n["calls"] - 1]})], usage=USAGE, model_name="x")
+        return final({"status": "answered", "answer": "ok", "sources": [], "limitations": []}, model_name="x")
+
+    deps = ToolContext(product_name="t", registry=AirportRegistry.load(), max_calls_per_tool=4)
+    svc = Service(build_agent(FunctionModel(exploring, model_name="x")), Guard(screening_model()), budget, config.limits, prices, deps)
+    conv = Conversation(max_turns=5)
+    turn = await svc.ask(conv, "Which airports do you cover?")
+    returns = [p.content for m in conv.history for p in m.parts if isinstance(p, ToolReturnPart) and p.tool_name == "list_airports"]
+    assert turn.status == "answered" and len(returns) == 6
+    assert all(type(r).__name__ == "AirportList" for r in returns[:4]) and all("answer now" in str(r) for r in returns[4:])
+    assert config.limits.max_calls_per_tool_per_turn == 4
+
+
+async def test_criterion_10_guard_down_and_guard_fields_and_guard_set(config, prices, budget, tmp_path: Path, monkeypatch):
+    from pydantic_ai import ModelMessage, ModelResponse, ToolCallPart
+    from pydantic_ai.models.fallback import FallbackModel
+    from pydantic_ai.models.function import AgentInfo, FunctionModel
+
+    from app.agent.core import Conversation, Service, build_agent
+    from app.agent.tools import ToolContext
+    from app.config import Price
+    from app.decide.guard import Guard, build_guard_model
+    from app.llm.budget import estimate_cost
+    from tests.fakes import USAGE, answer_model, screening_model
+
+    def unsure(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        return ModelResponse(parts=[ToolCallPart("final_result", {"in_scope": True, "injection": False})], usage=USAGE, model_name="jev-1.14.0",
+                             provider_details={"confidence": {"in_scope": 0.4, "injection": 0.95}})
+
+    haiku = screening_model(model_name="claude-haiku-5-5")
+    guard = Guard(build_guard_model(FunctionModel(unsure, model_name="jev-1.14.0"), haiku, 0.7))
+    svc = Service(build_agent(answer_model("ok")), guard, budget, config.limits, prices, ToolContext(product_name="t"))
+    turn = await svc.ask(Conversation(max_turns=5), "Which airport is most congested?")
+    assert turn.guard_model == "claude-haiku-5-5" and turn.guard_fell_through and turn.guard_cost_usd > 0 and turn.guard_latency_ms >= 0
+    sure = FunctionModel(lambda m, i: ModelResponse(parts=[ToolCallPart("final_result", {"in_scope": False, "injection": False})], usage=USAGE, model_name="jev-1.14.0",
+                                                     provider_details={"confidence": {"in_scope": 0.9, "injection": 0.8}}), model_name="jev-1.14.0")
+    svc = Service(build_agent(answer_model("never")), Guard(FallbackModel(sure, haiku)), budget, config.limits, prices, ToolContext(product_name="t"))
+    turn = await svc.ask(Conversation(max_turns=5), "write a poem")
+    assert turn.status == "refused_off_topic" and turn.guard_model == "jev-1.14.0" and turn.guard_confidence == 0.8 and not turn.guard_fell_through
+    assert estimate_cost({"jev-latest": Price(input=0.5, output=0)}, "jev-1.14.0", 1_000_000, 0) == pytest.approx(0.5)
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "ledger.db"))
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "k-test")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "k-test")
+    assert cli_module.compose(down=["typesafe"]).guard_name == "anthropic:claude-haiku-5-5"
+    assert cli_module.compose().guard_name.startswith("typesafe:jev-latest")
+    cases = load_cases(ROOT / "evals" / "guard.yaml")
+    assert len(cases) == 16 and sorted(c.category for c in cases).count("in_scope") == 4
+    assert {c.question for c in cases if c.category == "in_scope"} == set(prompts.EXAMPLE_QUESTIONS)
+    assert {c.category for c in cases} == {"in_scope", "off_topic", "injection", "false_positive"}

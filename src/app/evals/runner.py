@@ -28,6 +28,11 @@ class RunResult(BaseModel):
     cache_read_tokens: int = 0
     cache_write_tokens: int = 0
     ungrounded: list[str] = Field(default_factory=list)
+    guard_model: str | None = None
+    guard_confidence: float | None = None
+    guard_fell_through: bool = False
+    guard_latency_ms: int = 0
+    guard_cost_usd: float = 0.0
 
 
 class CaseResult(BaseModel):
@@ -188,6 +193,8 @@ async def run_case(service: Service, case: EvalCase, max_turns: int) -> RunResul
         latency_ms=turn.latency_ms, answer=turn.answer, input_tokens=turn.input_tokens,
         cache_read_tokens=turn.cache_read_tokens, cache_write_tokens=turn.cache_write_tokens,
         ungrounded=ungrounded_numbers(turn.answer, grounding_pool(turn, prior_results)) if turn.status == "answered" else [],
+        guard_model=turn.guard_model, guard_confidence=turn.guard_confidence, guard_fell_through=turn.guard_fell_through,
+        guard_latency_ms=turn.guard_latency_ms, guard_cost_usd=turn.guard_cost_usd,
     )
 
 

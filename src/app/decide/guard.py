@@ -72,6 +72,8 @@ class Verdict(BaseModel):
     confidence: dict[str, float] = Field(default_factory=dict)
     latency_ms: int = 0
     failed_attempts: list[str] = Field(default_factory=list)
+    input_tokens: int = 0
+    output_tokens: int = 0
 
 
 GUARD_INSTRUCTIONS = (
@@ -115,6 +117,7 @@ class Guard:
             confidence={k: float(v) for k, v in details.get("confidence", {}).items()},
             latency_ms=int((time.perf_counter() - started) * 1000),
             failed_attempts=[f"{a.model_name}: {a.outcome}" for a in (result.response.failed_attempts or [])],
+            input_tokens=result.usage.input_tokens, output_tokens=result.usage.output_tokens,
         )
 
 

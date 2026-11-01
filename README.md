@@ -153,7 +153,10 @@ therefore the hard backstop. Production would use a persistent database for both
 
 - Code: `BUDGET_USD` (15 USD per month, raised from 10 on 1.11.2026) enforced before every paid call (reserve → settle / release); 0.25 USD and
   16 model requests per turn; 20 requests per IP per hour, 200 per day. The guard's sub-cent screening call is not
-  ledgered (known under-count, bounded by the per-day request cap).
+  ledgered (known under-count, bounded by the per-day request cap); it is estimated per turn in `guard_cost_usd`.
+  A reservation still open when the process exits is released, and reservations older than ten minutes left by a
+  dead process are deleted at startup, so a crash leaves no orphaned rows; a call billed just before a crash is then
+  not counted here, which is why the provider caps are the backstop.
 - Provider consoles: Anthropic, Google and TypeSafe caps set by the owner on 1.11.2026 (2026-11-01) and raised to 15 USD the same day.
 - Prices: `config/prices.yaml`, verified 2026-11-01.
 

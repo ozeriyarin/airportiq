@@ -73,7 +73,7 @@ def compose(*, model_mode: str | None = None, down: list[str] | None = None, onl
         guard_name = "test"
     else:
         decision = None
-        if settings.key_for(config.models.guard_decision):
+        if settings.key_for(config.models.guard_decision) and not any(config.models.guard_decision.startswith(d) for d in (down or [])):
             decision = build_chain([config.models.guard_decision], settings, config.models).model
         fallback = build_chain([config.models.guard_fallback], settings, config.models).model
         guard_model = build_guard_model(decision, fallback, config.models.guard_confidence)
@@ -92,7 +92,7 @@ def compose(*, model_mode: str | None = None, down: list[str] | None = None, onl
     engine = Engine(store, registry, load_scoring_config(), profiles) if store and registry else None
     deps = ToolContext(
         product_name=config.name, registry=registry, store=store, profiles=profiles, engine=engine,
-        live=NasStatusClient(live_http, settings.faa_user_agent, cache_min=settings.live_cache_min),
+        live=NasStatusClient(live_http, settings.faa_user_agent, cache_min=settings.live_cache_min), max_calls_per_tool=config.limits.max_calls_per_tool_per_turn,
         opensky=OpenSkyClient(live_http, Settings.reveal(settings.opensky_client_id), Settings.reveal(settings.opensky_client_secret), cache_min=settings.opensky_cache_min),
     )
     service = Service(build_agent(chain.model, cache=config.models.cache), Guard(guard_model), budget, config.limits, prices, deps)
