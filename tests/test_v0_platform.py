@@ -426,3 +426,13 @@ def test_criterion_25_ci_and_render_blueprint():
     secrets = {e["key"] for e in svc["envVars"] if e.get("sync") is False}
     assert secrets == {"ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "TYPESAFE_API_KEY", "OPENROUTER_API_KEY", "OPENSKY_CLIENT_ID", "OPENSKY_CLIENT_SECRET"}
     assert next(e for e in svc["envVars"] if e["key"] == "BUDGET_USD")["value"] == "15"
+
+
+def test_criterion_26_test_mode_costs_zero(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "ledger.db"))
+    prices = load_prices()
+    assert prices["test"].input == 0 and prices["test"].output == 0 and estimate_cost(prices, "test", 1_000_000, 1_000_000) == 0
+    result = CliRunner().invoke(cli_module.cli, ["chat", "--test", "Which airports in New England are strong candidates for terminal expansion?"])
+    assert result.exit_code == 0 and "0.0000 USD" in result.output and "answered" in result.output, result.output
+    ledger = Budget(tmp_path / "ledger.db", cap_usd=15).stats()
+    assert ledger.calls == 1 and ledger.spent_usd == 0 and all(r.cost_usd == 0 for r in ledger.recent)

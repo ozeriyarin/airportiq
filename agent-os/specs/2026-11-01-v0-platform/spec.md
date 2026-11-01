@@ -44,6 +44,7 @@ OpenAI), `config/prices.yaml` with a verified date; `evals/` runner and a smoke 
 22. The coverage test fails naming the spec and expected file when a criterion lacks its test, and criteria of different specs never satisfy each other.
 23. `GET /` serves the single-file chat page titled airportiq that calls `/api/chat`, with no external scripts.
 24. `agent verify <url>` calls `/health` and asks one scored question through a retrying client and prints a dated record.
+26. (Round 2) `MODEL_MODE=test` costs zero: the test model is priced at 0 in `config/prices.yaml`, `agent chat --test` prints `0.0000 USD` on a real question, and the ledger settles the turn at 0.
 25. `.github/workflows/ci.yml` runs ruff, pytest and the offline eval smoke; `render.yaml` names the service `airportiq`, builds with `uv sync --frozen --no-dev`, starts `agent serve`, probes `/health`, lists `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, `TYPESAFE_API_KEY`, `OPENROUTER_API_KEY` as `sync: false` and sets `BUDGET_USD` to 10.
 
 ## Design
