@@ -23,6 +23,8 @@ browser chat page ──HTTP──▶ FastAPI (app/api)
                            Turn (status, answer, sources, limitations, served_by, failed_attempts, tokens, cost, latency)
 ```
 
+- **Browser chat page.** Speech-to-text and spoken answers (v5) run in the browser via the Web Speech API and
+  never reach the API; the server only ever sees text.
 - **The LLM never produces a number.** Tools return typed Pydantic models; the model picks tools and explains.
   `AnswerOut` is enforced by Pydantic AI; a reply that fails validation is retried once, then the turn fails loudly.
 - **Three retry layers, one job each:** the httpx transport retries 429/5xx/network per model with Retry-After;

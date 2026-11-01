@@ -27,13 +27,16 @@
   button { flex:0 0 auto; white-space:nowrap; padding:10px 14px; border:0; border-radius:8px; background:var(--accent); color:#fff; font:inherit; cursor:pointer; }
   button:disabled { opacity:.5; }
   #footer { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+  #mic, #speak { padding: 0 10px; display:inline-flex; align-items:center; }
+  @media (max-width: 480px) { button { padding:10px 10px; } #mic, #speak { padding:0 8px; } }
+  #mic.listening, [aria-pressed="true"]#speak { background: var(--warn); }
 </style>
 </head>
 <body>
 <main>
   <header><div><h1 id="title">airportiq agent</h1><div id="tagline">Capacity pressure across US hub airports</div></div><span id="status"></span></header>
   <div id="log"></div>
-  <form id="f"><input id="q" autocomplete="off" placeholder="Ask a question" maxlength="2000" required><button id="send">Send</button></form>
+  <form id="f"><input id="q" autocomplete="off" placeholder="Ask a question" maxlength="2000" required><button id="mic" type="button" aria-label="Ask by voice" title="Ask by voice" aria-pressed="false" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg></button><button id="speak" type="button" aria-label="Read answers aloud" title="Read answers aloud" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10v4h4l5 4V6L7 10H3z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M19 6a8 8 0 0 1 0 12"/></svg></button><button id="send">Send</button></form>
   <p id="footer">Scores are a capacity-pressure proxy from public FAA and BTS data; weights and modelled capacity are stated assumptions, not investment advice.</p>
 </main>
 <script>
@@ -59,9 +62,36 @@
     if (meta) { const m = document.createElement('div'); m.className = 'meta'; m.textContent = meta; d.appendChild(m); }
     log.appendChild(d); scrollToEnd(); return d;
   }
+  // Voice (bonus): the browser's Web Speech API only. No dependency; the mic stays hidden when unsupported.
+  const mic = document.getElementById('mic'), speak = document.getElementById('speak');
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let spoken = false, readAloud = false;
+  try { readAloud = localStorage.getItem('airportiq.readAloud') === '1'; } catch (e) {}
+  speak.setAttribute('aria-pressed', String(readAloud));
+  speak.addEventListener('click', () => {
+    readAloud = !readAloud; speak.setAttribute('aria-pressed', String(readAloud));
+    try { localStorage.setItem('airportiq.readAloud', readAloud ? '1' : '0'); } catch (e) {}
+    if (!readAloud && window.speechSynthesis) speechSynthesis.cancel();
+  });
+  if (Recognition) {
+    mic.hidden = false;
+    const rec = new Recognition(); rec.lang = 'en-US'; rec.interimResults = false; rec.maxAlternatives = 1;
+    mic.addEventListener('click', () => {
+      try { mic.classList.add('listening'); mic.setAttribute('aria-pressed', 'true'); rec.start(); } catch (e) {}
+    });
+    rec.onresult = (ev) => { q.value = ev.results[0][0].transcript; spoken = true; document.getElementById('f').requestSubmit(); };
+    rec.onend = () => { mic.classList.remove('listening'); mic.setAttribute('aria-pressed', 'false'); };
+    rec.onerror = rec.onend;
+  }
+  function sayAnswer(text) {  // speaks the answer only, never sources, limitations or the technical line
+    const wanted = spoken || readAloud; spoken = false;
+    if (!wanted || !window.speechSynthesis) return;
+    speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+  }
   document.getElementById('f').addEventListener('submit', async (e) => {
     e.preventDefault(); const message = q.value.trim(); if (!message) return;
     add('user', message); q.value = ''; send.disabled = true;
+    if (window.speechSynthesis) speechSynthesis.cancel();
     const pending = add('bot', '…');
     try {
       const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -70,6 +100,7 @@
       if (!r.ok) { pending.textContent = j.detail || `HTTP ${r.status}`; pending.classList.add('refused'); return; }
       sessionId = j.session_id;
       pending.textContent = j.answer;
+      sayAnswer(j.answer);
       if (j.status !== 'answered') pending.classList.add('refused');
       // Analysts see sources and limitations; model, tools, cost and latency sit behind a toggle.
       const meta = document.createElement('div'); meta.className = 'meta';

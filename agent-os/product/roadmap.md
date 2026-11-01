@@ -50,7 +50,7 @@ report (when prompts/models change) → README/roadmap → commit.
 
 ## Phase 2: Bonus (only if time remains)
 
-6. **v5 voice** — browser Web Speech mic and read-aloud in the chat page; nothing reaches the server.
+6. ~~v5 voice~~ shipped. Was: browser Web Speech mic and read-aloud in the chat page; nothing reaches the server.
 7. **v6 OpenSky** — registered-account client for aircraft currently around an airport as a second live signal.
 8. **v7 cost** — measured cache share and a Haiku-as-answerer experiment with the adoption rule stated first.
 

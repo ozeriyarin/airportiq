@@ -50,6 +50,8 @@ uv run pytest -q
   0 pass / 1 fail / 2 flaky; every number in an answer must appear in that turn's tool outputs.
 - **Prompt caching** of the static prefix is on from the first commit; cache tokens are in every turn record.
 - **Offline mode:** `MODEL_MODE=test` (or `--test`) runs everything on Pydantic AI's `TestModel`.
+- **Voice (bonus):** the chat page has a mic button (browser speech recognition, hidden when unsupported) and a
+  read-aloud toggle (speech synthesis) using the Web Speech API only; nothing but text reaches the server.
 
 ## Data
 
