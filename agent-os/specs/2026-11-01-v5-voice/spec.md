@@ -1,6 +1,6 @@
 # Spec: v5 voice
 
-Status: shaped 1.11.2026 (bonus item from the brief, owner asked for it after the must-haves shipped).
+Status: shipped 1.11.2026, commit `c3ab54b`, 4 criterion tests.
 
 ## Goal
 

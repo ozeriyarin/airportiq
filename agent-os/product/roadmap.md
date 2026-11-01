@@ -31,6 +31,10 @@ report (when prompts/models change) → README/roadmap → commit.
   closeout (scoring methodology, key tradeoffs, where AI is used), demo script; 6 criterion tests (provider-cap
   dates awaited from the owner).
 
+- **v5 voice** (1.11.2026, spec `agent-os/specs/2026-11-01-v5-voice`, commit `c3ab54b`): mic button (browser speech
+  recognition, hidden when unsupported) and read-aloud toggle (speech synthesis) in the chat page; only text reaches
+  the server; 4 criterion tests.
+
 ## Phase 1: MVP (must ship today)
 
 1. ~~v0 platform~~ shipped. Was: lift the scaffold: model chain (Sonnet → Haiku → Gemini) with retries and fallback, Jev → Haiku
