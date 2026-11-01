@@ -19,21 +19,21 @@ report (when prompts/models change) → README/roadmap → commit.
 
 - **v2 capacity KPI** (1.11.2026, spec `agent-os/specs/2026-11-01-v2-capacity-kpi`, commit `df86f19`): `config/scoring.yaml`
   1.0.0, five percentile-normalized components, capacity precedence (FAA service volume > profile cross-check > runway
-  model, RMSE 92,932 ops over 137 airports), lenses, eight tools, `agent score`, worked SFO example (CPS 73.1) asserted by
+  model, RMSE 92,932 ops over 137 airports), lenses, eight tools, `agent score`, worked SFO example (CPS 73.1, Round 2: 74.3) asserted by
   a test; 16 criterion tests; 115 tests total. **Round 2 (1.11.2026, scoring 1.1.0):** precedence reversed to profile
   first after measuring the service volume as stale for the largest hubs (DEN 1.96x); SFO CPS 74.3; limitation when
   operations exceed the capacity figure.
 
 - **v3 agent** (1.11.2026, spec `agent-os/specs/2026-11-01-v3-agent`, commit `dd57e32`): prompt 0.3.0 (tool guide, number
-  rules, `_pct` fields so the model never converts ratios), 23-case live set, baseline 23/23 (repeat 2, 0 ungrounded,
-  0.45 USD, 47% cache), `--down anthropic` 21/23 served by Gemini alone; 7 criterion tests. **Round 2 (1.11.2026,
+  rules, `_pct` fields so the model never converts ratios), 23-case live set, baseline 23/23 (Round 2: 40/43 of 43 cases; repeat 2,
+  0 ungrounded, 0.45 USD then 0.93 USD, 47% cache), `--down anthropic` 21/23 (Round 2: 40/43) served by Gemini alone; 7 criterion tests. **Round 2 (1.11.2026,
   prompt 0.3.1):** 43 cases, weights and band values carry percentage twins, baseline 40/43 with no failed case (3 flaky,
   one tool-loop root cause, 0 ungrounded), Gemini alone 40/43.
 
 - **v4 deploy** (1.11.2026, spec `agent-os/specs/2026-11-01-v4-deploy`, commit `dd57e32`): live at
   https://airportiq.onrender.com, dated `agent verify` record, assumptions / uncertainty / scoping table, DESIGN
-  closeout (scoring methodology, key tradeoffs, where AI is used), demo script; 6 criterion tests (provider-cap
-  dates awaited from the owner).
+  closeout (scoring methodology, key tradeoffs, where AI is used), demo script; 6 criterion tests; provider-console
+  caps recorded as set on 1.11.2026 (commit `bb4b214`). Round 2 re-verification after scoring 1.1.0: commit `eee30c3`.
 
 - **v5 voice** (1.11.2026, spec `agent-os/specs/2026-11-01-v5-voice`, commit `c3ab54b`): mic button (browser speech
   recognition, hidden when unsupported) and read-aloud toggle (speech synthesis) in the chat page; only text reaches
