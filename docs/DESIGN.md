@@ -209,12 +209,16 @@ same treatment: the facts now state weights in both forms and every band value c
 0.3.1, scoring 1.1.0). The final baseline is 40 of 43 with no failed case and three flaky cases that share one
 root cause: in two of 86 runs the model looped on tool calls until the 16-request ceiling stopped the turn
 (`cannot_answer`, zero spend), and one of those was a prior turn, which left its follow-up without context. The
-loop was later caught in the act with `capture_run_messages`: the model re-issued `traffic_mix` with identical
-arguments fifteen times in one turn, and even "successful" turns of that kind cost ten times a normal one. The
-fix is deterministic, not a prompt plea: every tool is wrapped so a repeated identical call in the same turn
-returns a `Repeated` result pointing at the earlier answer, and a limit-exceeded turn logs its call sequence
-(names and arguments, never content). The committed baseline predates the guard; the live acceptance pass after
-it is in `docs/ACCEPTANCE.md`. The third flaky
+loop was then caught in the act with `capture_run_messages`. The first capture looked like one call repeated
+fifteen times; the full trace showed something else: after a not-found for a year outside the snapshot, the model
+explored every valid year one by one, alternating "Anchorage" and "ANC", calling `about` in between, and never
+wrote the reply. Two deterministic fixes followed, neither a prompt plea: a year outside the snapshot returns the
+latest year with a note naming the covered years, and any tool called more than four times in a turn answers
+"you have the data, answer now" (a repeated identical call returns the earlier result's pointer). A limit-exceeded
+turn logs its call sequence (names and arguments, never content). Measured on the same 43 cases with repeat 2
+(`evals/results/v6-baseline`, prompt 0.4.0): 43/43, 0 of 86 runs hit the
+ceiling, 0 ungrounded, 0.78 USD, p95 10699 ms against 12616 ms
+before; Gemini alone 41/43. The pre-fix reports stay in `evals/results/v3-*` as the before picture. The third flaky
 case ("can an analyst override the weights?") drew an honest "I cannot confirm" once, which the case should have
 accepted. Gemini alone (`--down anthropic`) passes 40 of 43, missing on formatting (31% for 31.0, a rounded
 percentile) and two numbers it computed itself. The reports under `evals/results/` are the evidence; the README
@@ -223,4 +227,7 @@ table summarizes them.
 ## What production would change
 
 Persistent sessions and ledger (Postgres), per-user auth, streaming replies, ASPM access for measured capacity at
-every airport, scheduled snapshot refresh, and calibration of the weights against realised project outcomes.
+every airport, scheduled snapshot refresh, and calibration of the weights against realised project outcomes. Tool
+output size is the first cost lever: the largest turn in the v6 baseline (`xna-modelled`) put 67,957 input tokens
+(35,225 uncached) into one turn because rankings and breakdowns return full component detail, so production
+would return summary rows from `rank_airports` and fetch detail per airport on demand.

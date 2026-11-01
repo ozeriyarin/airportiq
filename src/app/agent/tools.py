@@ -39,6 +39,7 @@ class ToolContext:
     profiles: ProfilesFile | None = None
     engine: Engine | None = None
     opensky: OpenSkyClient | None = None
+    max_calls_per_tool: int = 4  # per turn; beyond it the tool returns Repeated instead of running
 
     @property
     def data_facts(self) -> str:
@@ -90,10 +91,17 @@ class Unavailable(BaseModel):
 
 
 class Repeated(BaseModel):
-    """Returned instead of re-running a tool the model already called with the same arguments in this turn."""
+    """Returned instead of running a tool again: the same call was already made, or the tool was called too often."""
 
     tool: str
     note: str = "this exact call was already made in this turn; use its earlier result and answer now, do not call it again"
+
+
+def calls_in_run(ctx: RunContext[Any], name: str) -> int:
+    return sum(1 for m in ctx.messages if isinstance(m, ModelResponse) for p in m.parts if isinstance(p, ToolCallPart) and p.tool_name == name)
+
+
+TOO_MANY = "this tool was called {n} times in this turn; you already have the data, answer now with it, do not call any tool again"
 
 
 def repeated_in_run(ctx: RunContext[Any], name: str, args: dict[str, Any]) -> bool:
@@ -119,20 +127,25 @@ def dedupe(fn: Callable[..., Any]) -> Callable[..., Any]:
             bound.setdefault(name, sig.parameters[name].default)
         return {k: v for k, v in bound.items() if v is not inspect.Parameter.empty}
 
+    def blocked(ctx: RunContext[Any], a: tuple, kw: dict) -> Repeated | None:
+        limit = getattr(ctx.deps, "max_calls_per_tool", 4)
+        n = calls_in_run(ctx, fn.__name__)
+        if n > limit:
+            return Repeated(tool=fn.__name__, note=TOO_MANY.format(n=n))
+        if repeated_in_run(ctx, fn.__name__, args_of(a, kw)):
+            return Repeated(tool=fn.__name__)
+        return None
+
     if inspect.iscoroutinefunction(fn):
         @functools.wraps(fn)
         async def async_wrapper(ctx: RunContext[Any], *a: Any, **kw: Any) -> Any:
-            if repeated_in_run(ctx, fn.__name__, args_of(a, kw)):
-                return Repeated(tool=fn.__name__)
-            return await fn(ctx, *a, **kw)
+            return blocked(ctx, a, kw) or await fn(ctx, *a, **kw)
 
         return async_wrapper
 
     @functools.wraps(fn)
     def wrapper(ctx: RunContext[Any], *a: Any, **kw: Any) -> Any:
-        if repeated_in_run(ctx, fn.__name__, args_of(a, kw)):
-            return Repeated(tool=fn.__name__)
-        return fn(ctx, *a, **kw)
+        return blocked(ctx, a, kw) or fn(ctx, *a, **kw)
 
     return wrapper
 
@@ -261,10 +274,12 @@ def _mix(deps: ToolContext, airport: str, year: int | None) -> TrafficMix | NotF
     years = engine.available_years(a.id)
     if not years:
         return Unavailable(reason=f"no T-100 traffic rows for {a.id} in the snapshot")
-    if year is not None and year not in years:
-        return NotFound(kind="year", query=str(year), valid=[str(y) for y in years], hint="years with T-100 data in the snapshot")
-    mix = engine.traffic_mix(a.id, year)
-    return mix if mix else Unavailable(reason=f"no traffic mix for {a.id}")
+    mix = engine.traffic_mix(a.id, year if year in years else None)
+    if mix is None:
+        return Unavailable(reason=f"no traffic mix for {a.id}")
+    if year is not None and year not in years:  # give the data that exists instead of a bare not-found the model would chase
+        mix.note = f"{year} is not in the snapshot (T-100 covers {years[0]}-{years[-1]}); this is the latest year, per_year lists every year available"
+    return mix
 
 
 def _unmet(deps: ToolContext, airport: str) -> UnmetDemand | NotFound | Ambiguous | Unavailable:
@@ -301,7 +316,7 @@ def airport_profile(ctx: RunContext[ToolContext], airport: str) -> AirportProfil
 
 
 def traffic_mix(ctx: RunContext[ToolContext], airport: str, year: int | None = None) -> TrafficMix | NotFound | Ambiguous | Unavailable:
-    """Share of long-haul (3,000+ mile), international and cargo departures and the load factor for one airport and year (latest year by default), with the denominators."""
+    """Share of long-haul (3,000+ mile), international and cargo departures and the load factor for one airport and year (latest year by default; a year outside the snapshot returns the latest year with a note), with the denominators and every year in per_year."""
     return _mix(ctx.deps, airport, year)
 
 

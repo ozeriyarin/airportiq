@@ -230,7 +230,9 @@ def test_criterion_12_tools_never_raise_and_carry_versions(engine: Engine):
     nf = _rank(deps, "nope", None, 10)
     assert isinstance(nf, NotFound) and nf.kind == "lens" and "expansion" in nf.valid
     assert isinstance(_rank(deps, "congestion", "Atlantis", 10), NotFound)
-    assert isinstance(_score(deps, "ZZZ"), NotFound) and isinstance(_mix(deps, "AAA", 1999), NotFound)
+    assert isinstance(_score(deps, "ZZZ"), NotFound)
+    bad_year = _mix(deps, "AAA", 1999)  # a year outside the snapshot returns the latest year with a note, never a bare not-found
+    assert bad_year.year == 2025 and "1999 is not in the snapshot" in bad_year.note and "2023-2025" in bad_year.note
     amb = resolve_airport(_deps_real(), "portland")
     assert isinstance(amb, Ambiguous) and {c[:3] for c in amb.candidates} == {"PDX", "PWM"}
     assert isinstance(_score(_deps_real(), "portland"), Unavailable)  # no engine: unavailable before resolution

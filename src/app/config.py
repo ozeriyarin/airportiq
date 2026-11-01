@@ -27,6 +27,7 @@ class LimitsConfig(BaseModel):
     max_message_chars: int = Field(gt=0)
     max_turns: int = Field(gt=0)
     model_requests_per_turn: int = Field(gt=0)
+    max_calls_per_tool_per_turn: int = Field(default=4, gt=0)
     per_turn_usd: float = Field(gt=0)
     per_turn_estimate_usd: float = Field(gt=0)
     per_ip_per_hour: int = Field(gt=0)

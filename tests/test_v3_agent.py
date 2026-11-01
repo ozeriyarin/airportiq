@@ -63,19 +63,16 @@ def test_criterion_4_smoke_set_asserts_the_brief_tools_offline(tmp_path: Path, m
 
 
 def test_criterion_5_baseline_report_passes_with_grounding_and_metadata():
-    r = _report("v3-baseline")
+    r = _report("v6-baseline")
     assert r["exit_code"] in (0, 2) and r["repeat"] >= 2 and not any(not c["passed"] and not c["flaky"] for c in r["cases"])
     assert len(r["cases"]) >= 30
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    if r["prompt_version"] != prompts.PROMPT_VERSION:  # a newer prompt without a re-run must say so in the README
-        assert f"Prompt {prompts.PROMPT_VERSION}" in readme and "not re-run" in readme, "README must state the prompt moved on without a baseline re-run"
-    assert r["config_version"] and r["total_cost_usd"] > 0
+    assert r["prompt_version"] == prompts.PROMPT_VERSION and r["config_version"] and r["total_cost_usd"] > 0
     assert r["ungrounded_runs"] <= 2 and "cache_share" in r and r["latency_p95_ms"] > 0
     assert r["models"][0] == "anthropic:claude-sonnet-5-5"
 
 
 def test_criterion_6_anthropic_down_report_is_served_by_gemini():
-    r = _report("v3-anthropic-down")
+    r = _report("v6-anthropic-down")
     assert any("simulated outage: anthropic" in n for n in r["notes"]) and not any(m.startswith("anthropic") for m in r["models"])
     answered = [run for c in r["cases"] for run in c["runs"] if run["status"] in ("answered", "cannot_answer")]
     assert answered and all(run["served_by"].startswith("gemini") for run in answered)
@@ -84,8 +81,8 @@ def test_criterion_6_anthropic_down_report_is_served_by_gemini():
 
 def test_criterion_7_readme_lists_both_reports():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    base, down = _report("v3-baseline"), _report("v3-anthropic-down")
-    for tag, r in (("v3-baseline", base), ("v3-anthropic-down", down)):
+    base, down = _report("v6-baseline"), _report("v6-anthropic-down")
+    for tag, r in (("v6-baseline", base), ("v6-anthropic-down", down)):
         assert f"`evals/results/{tag}`" in readme, tag
         passed = sum(c["passed"] for c in r["cases"])
         assert f"{passed}/{len(r['cases'])}" in readme, tag

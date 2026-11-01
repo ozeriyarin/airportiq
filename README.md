@@ -56,9 +56,9 @@ uv run pytest -q
 - **Prompt caching** of the static prefix is on from the first commit; cache tokens are in every turn record.
 - **Offline mode:** `MODEL_MODE=test` (or `--test`) runs everything on Pydantic AI's `TestModel`.
 - **OpenSky (bonus, v6):** `aircraft_now` answers "how many planes are around SFO right now" from OpenSky's live state
-  vectors; credentials are optional (`OPENSKY_CLIENT_ID` / `OPENSKY_CLIENT_SECRET`). Prompt 0.4.0 adds only the tool
-  line; the live baseline was not re-run for it (about 8.3 USD of the monthly cap was spent on evals), the offline smoke
-  set asserts the tool and a live query returned 17 aircraft around SFO on 1.11.2026.
+  vectors; credentials are optional (`OPENSKY_CLIENT_ID` / `OPENSKY_CLIENT_SECRET`). Prompt 0.4.0 adds the tool line; the
+  live baseline (`evals/results/v6-baseline`) covers it, the offline smoke set asserts the tool, and a live query returned 17
+  aircraft around SFO on 1.11.2026.
 - **Voice (bonus):** the chat page has a mic button (browser speech recognition, hidden when unsupported) and a
   read-aloud toggle (speech synthesis) using the Web Speech API only; nothing but text reaches the server.
 
@@ -162,16 +162,17 @@ therefore the hard backstop. Production would use a persistent database for both
 
 ## Evals
 
-`evals/cases.yaml` holds 43 live cases (26 in scope, 4 off topic, 4 injection, 4 false positive, 5 followup), including the brief's four questions verbatim, every tool, a modelled-capacity airport, the no-capacity airport, bad years and areas, lens and area aliases, and a Hebrew question; every number in an answer must appear in that turn's tool outputs. The flaky cases in the
-baseline trace to one intermittent tool-call loop, since fixed in code (a repeated identical call in one turn returns
-`Repeated` instead of running again, commit `cbe743d`); the committed report predates that fix. Known open issue: the
-guard stops the tool from re-running, not the model from re-asking, so about one turn in thirty on the Anchorage
-question still ends at the 16-request ceiling with `cannot_answer` at zero cost; the server logs the call sequence.
+`evals/cases.yaml` holds 43 live cases (26 in scope, 4 off topic, 4 injection, 4 false positive, 5 followup), including the brief's four questions verbatim, every tool, a modelled-capacity airport, the no-capacity airport, bad years and areas, lens and area aliases, and a Hebrew question; every number in an answer must appear in that turn's tool outputs.
+
+The tool-call loop that made three cases flaky in the pre-fix baseline was traced (the model exploring years one by
+one after a not-found, alternating airport spellings) and fixed in code: a year outside the snapshot now returns the
+latest year with a note, and a tool called more than four times in a turn answers "you have the data, answer now".
+Measured result on the same 43 cases with repeat 2: 0 of 86 runs hit the 16-request ceiling, 43/43 cases, 0 ungrounded runs, p95 latency 10699 ms (pre-fix 12616 ms).
 
 | Report | Models | Result | Cost and latency | Note |
 |---|---|---|---|---|
-| `evals/results/v3-baseline` | anthropic:claude-sonnet-5-5 → anthropic:claude-haiku-5-5 → google-gla:gemini-2.5-flash | 40/43 cases, repeat 2, ungrounded runs 0 | 0.9335 USD, cache share 47%, p50 6250 ms | prompt 0.3.1, scoring 1.1.0; flaky: sfo-long-haul-2023, fp-override, fu-anc-year-before. The first baseline (prompt 0.2.0, 23 cases) was 16/23: every miss but three was the model converting ratios to percentages, fixed by `_pct` tool fields |
-| `evals/results/v3-anthropic-down` | google-gla:gemini-2.5-flash | 40/43 cases, repeat 1, ungrounded runs 1 | 0.0713 USD, cache share 35%, p50 2894 ms | `--down anthropic`: Gemini alone; misses: brief-3-anc-long-haul, bos-vs-jfk, fp-override |
+| `evals/results/v6-baseline` | anthropic:claude-sonnet-5-5 → anthropic:claude-haiku-5-5 → google-gla:gemini-2.5-flash | 43/43 cases, repeat 2, ungrounded runs 0 | 0.7841 USD, cache share 47%, p50 5598 ms, p95 10699 ms | prompt 0.4.0, scoring 1.1.0, after the loop fixes: 0 of 86 runs hit the request ceiling. Pre-fix baseline kept as `evals/results/v3-baseline`: 40/43 with 3 flaky cases, 0.9335 USD, p95 12616 ms |
+| `evals/results/v6-anthropic-down` | google-gla:gemini-2.5-flash | 41/43 cases, repeat 1, ungrounded runs 0 | 0.0781 USD, cache share 34%, p50 3124 ms, p95 9270 ms | `--down anthropic`: Gemini alone; misses: brief-3-anc-long-haul, fp-override (formatting 31% for 31.0; an honest 'cannot confirm'). Pre-fix run kept as `evals/results/v3-anthropic-down`: 40/43 |
 | `evals/results/ci-smoke` | TestModel (offline) | statuses and tools only | 0 USD | runs in CI on every push |
 
 ## Assumptions, uncertainty, scoping

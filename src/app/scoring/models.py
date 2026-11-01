@@ -123,6 +123,7 @@ class TrafficMix(BaseModel):
     long_haul_miles: int
     per_year: list[dict[str, float]] = Field(default_factory=list)
     source: str = "BTS T-100 Segment, all carriers, departures performed"
+    note: str = ""
     scoring_version: str
     data_through: dict[str, str]
 

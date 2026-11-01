@@ -38,7 +38,7 @@ over FAA and BTS data and the LLM only chooses tools and explains."
 - Capacity model: RMSE 92,932 operations per year over 137 airports (used for 3 airports; GUM has no capacity).
 - SFO: CPS 74.3; utilization 0.95 of 402,400 operations; load factor 0.823; long-haul 13.6% of 190,110 departures (2025).
 - ANC: 31.0% long-haul of 87,988 departures in 2025; cargo 59% of movements.
-- Cost: a Sonnet tool turn ≈ 0.01–0.03 USD with caching; eval run cost in the README table.
+- Cost: a Sonnet tool turn ≈ 0.01–0.03 USD with caching; v6 baseline 43/43 at 0.78 USD for 86 runs, 47% of input from cache, p95 10699 ms; Gemini alone 41/43.
 
 ## Honest answers
 

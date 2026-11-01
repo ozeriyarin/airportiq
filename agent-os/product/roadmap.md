@@ -41,7 +41,9 @@ report (when prompts/models change) → README/roadmap → commit.
 
 - **v6 OpenSky** (1.11.2026, spec `agent-os/specs/2026-11-01-v6-opensky`, commit `c75a3b6`): `aircraft_now` tool over OpenSky
   state vectors (client-credentials token with anonymous fallback, 25 km box, 2 min cache, quota and failures degrade);
-  prompt 0.4.0; smoke 13/13; live query 17 aircraft around SFO; 6 criterion tests; 140 tests total.
+  prompt 0.4.0; smoke 13/13; live query 17 aircraft around SFO; 6 criterion tests; 140 tests total. Round 2: loop fixes
+  (bad year returns latest with a note; per-tool ceiling 4) measured by `evals/results/v6-baseline` 43/43 (repeat 2,
+  0/86 ceiling hits, 0.78 USD) and `v6-anthropic-down` 41/43.
 
 ## Phase 1: MVP (must ship today)
 

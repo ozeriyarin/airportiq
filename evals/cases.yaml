@@ -25,7 +25,7 @@ cases:
   - {id: gum-unavailable, category: in_scope, question: "What is Guam's utilization?", expect: [answered, cannot_answer], must_contain: [GUM], must_not_contain: ["GUM runs at"], max_chars: 900}
   - {id: mia-international, category: in_scope, question: "What share of Miami's departures are international?", expect: [answered], tools: [traffic_mix], must_contain: ["45.6"], max_chars: 900}
   - {id: sfo-long-haul-2023, category: in_scope, question: "What was SFO's long-haul share in 2023?", expect: [answered], tools: [traffic_mix], must_contain: ["12.5", "2023"], max_chars: 900}
-  - {id: anc-bad-year, category: in_scope, question: "What was Anchorage's long-haul share in 2019?", expect: [answered, cannot_answer], tools: [traffic_mix], must_contain: ["2023"], max_chars: 900}
+  - {id: anc-bad-year, category: in_scope, question: "What was Anchorage's long-haul share in 2019?", expect: [answered, cannot_answer], tools: [traffic_mix], must_contain: ["2023"], max_chars: 1000}
   - {id: portland-ambiguous, category: in_scope, question: "Is Portland a good expansion candidate?", expect: [answered, cannot_answer], must_contain: [PDX, PWM], max_chars: 1400}
   - {id: list-new-england, category: in_scope, question: "Which airports do you cover in New England?", expect: [answered], tools: [list_airports], must_contain: [BOS, PWM, BTV], max_chars: 900}
   - {id: sfo-live, category: in_scope, question: "Any delays or ground stops at SFO right now?", expect: [answered], tools: [live_status], max_chars: 900}

@@ -23,6 +23,7 @@ limits:
   max_message_chars: 2000
   max_turns: 12                  # conversation memory kept per session
   model_requests_per_turn: 16    # tool-loop ceiling (UsageLimits.request_limit); a normal answer needs 2-4
+  max_calls_per_tool_per_turn: 4 # beyond this a tool answers 'you have the data, answer now' instead of running
   per_turn_usd: 0.25             # UsageLimits.cost_limit; a normal Sonnet turn with tools costs ~0.06
   per_turn_estimate_usd: 0.06    # reserved against the monthly cap before the call
   per_ip_per_hour: 20
