@@ -1,0 +1,3 @@
+# Vendor-outage proof: `agent eval --down anthropic --cases evals/accept/fallback_cases.yaml` must be served by Gemini.
+cases:
+  - {id: fb-anc, category: in_scope, question: "What is the percentage of long haul flights out of Anchorage airport?", expect: [answered], tools: [traffic_mix], must_contain: ["87,988"]}

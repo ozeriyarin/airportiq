@@ -43,6 +43,7 @@ DOWN_OPT = typer.Option([], help="vendor prefix to drop from the chain, e.g. ant
 NOTE_OPT = typer.Option([], help="free-text note recorded in the report")
 MODEL_OPT = typer.Option(None, "--model", help="run the set on this single answer model (experiment), e.g. anthropic:claude-haiku-5-5")
 CASES_OPT = typer.Option(None, help="case file; default evals/cases.yaml, or evals/smoke.yaml with --test")
+ACCEPT_CASES_OPT = typer.Option(None, help="case file; default evals/accept/cases.yaml")
 VERIFY_QUESTION = "Which airports in New England are strong candidates for terminal expansion?"
 
 
@@ -204,6 +205,27 @@ def verify(url: str, timeout_s: float = 90.0) -> None:
     if problems:
         typer.echo("verify failed:\n- " + "\n- ".join(problems))
         raise typer.Exit(code=1)
+
+
+@cli.command()
+def accept(url: str, cases: Path | None = ACCEPT_CASES_OPT, timeout_s: float = 120.0) -> None:
+    """Live acceptance pass against a deployed service: endpoints plus evals/accept/cases.yaml over HTTP; exit 0 pass / 1 fail."""
+    from app.accept import ACCEPT_DIR, render, run_accept
+
+    base = url.rstrip("/")
+
+    async def run():
+        http = retrying_http_client(attempts=3, timeout_s=timeout_s, max_wait_s=30)
+        async with http:
+            return await run_accept(http, base, cases or ACCEPT_DIR / "cases.yaml")
+
+    try:
+        report = asyncio.run(run())
+    except (httpx2.HTTPError, ValueError) as e:
+        typer.echo(f"accept failed: {e}")
+        raise typer.Exit(code=1) from e
+    typer.echo(render(report))
+    raise typer.Exit(code=report.exit_code)
 
 
 def check_health(payload: dict) -> list[str]:

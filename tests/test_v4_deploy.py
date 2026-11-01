@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 
+import httpx2
 import pytest
 import yaml
+from typer.testing import CliRunner
 
+from app import cli as cli_module
+from app.accept import render, run_accept
+from app.api.app import create_app
+from app.api.sessions import SessionStore
 from app.config import ROOT
+from app.evals.cases import load_cases
 
 README = (ROOT / "README.md").read_text(encoding="utf-8")
 DESIGN = (ROOT / "docs" / "DESIGN.md").read_text(encoding="utf-8")
@@ -56,3 +64,24 @@ def test_criterion_5_design_names_the_three_topics_and_docs_carry_no_pending_lin
 def test_criterion_6_demo_script_numbers_match_the_readme():
     for fact in ("393,000", "402,400", "87,988", "31.0%", "92,932", "144"):
         assert fact in DEMO and fact in README, fact
+
+
+async def test_criterion_7_accept_command_runs_offline_and_reports_per_row(service, budget, monkeypatch):
+    app = create_app(service, SessionStore(max_turns=5, ttl_s=60), budget, model_names=["fake"], guard_name="fake-guard", admin_token="s")
+    http = httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), base_url="http://accept.test")
+    report = await run_accept(http, "http://accept.test")
+    names = [r.check for r in report.rows]
+    assert names[:6] == ["GET /health", "GET /api/docs", "GET / chat page", "GET /api/stats without and with a wrong token", "DELETE /api/sessions/{id}", "POST /api/chat empty body / no message"]
+    assert all(r.passed for r in report.rows[:6]), [r.evidence for r in report.rows[:6] if not r.passed]
+    cases = load_cases(ROOT / "evals" / "accept" / "cases.yaml")
+    assert len(report.rows) == 6 + len(cases) and {c.question for c in cases} >= {"Which airports in New England are strong candidates for terminal expansion?", "Compare LA and Santa Ana airport congestion levels.", "What is the percentage of long haul flights out of Anchorage airport?", "What is the unmet flight demand in SFO airport and why?"}
+    greet = next(r for r in report.rows if r.check.endswith("greet-hi"))
+    assert greet.passed and "guardrail intro" in greet.evidence and "0.0000 USD" in greet.evidence
+    brief = next(r for r in report.rows if r.check.endswith("brief-1-new-england-expansion"))
+    assert not brief.passed and "FAIL:" in brief.evidence and "tools" in brief.evidence  # the fake model answers 'ok' without tools
+    assert report.exit_code == 1 and "| Check | Result | Evidence |" in render(report)
+    monkeypatch.setattr(cli_module, "retrying_http_client", lambda **kw: httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), base_url="http://accept.test"))
+    result = await asyncio.to_thread(CliRunner().invoke, cli_module.cli, ["accept", "http://accept.test"])
+    assert result.exit_code == 1 and "checks passed" in result.output
+    accept_doc = (ROOT / "docs" / "ACCEPTANCE.md").read_text(encoding="utf-8")
+    assert "`agent accept" in accept_doc and "evals/accept/cases.yaml" in accept_doc

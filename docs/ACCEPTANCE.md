@@ -1,7 +1,9 @@
 # Acceptance pass — 1.11.2026, HEAD `e4899f0`
 
 Run in three batches (static, live conversation, rate limit). Every evidence cell is pasted from real output of that
-run; nothing is summarized from memory. Live calls went to https://airportiq.onrender.com; the two local runs are
+run and names the command that produced it; nothing is summarized from memory. The live checks in batch 2 were first
+run by a script that became `agent accept <url>` (cases in `evals/accept/cases.yaml`); batch 1 rows are git, gh and uv
+commands as written in each cell. Live calls went to https://airportiq.onrender.com; the two local runs are
 marked and ran on the same commit.
 
 ## Batch 1 — static
@@ -31,33 +33,33 @@ marked and ran on the same commit.
 
 | # | Check | Result | Evidence |
 |---|---|---|---|
-| 19 | `GET /health` | PASS | 200; models Sonnet 5.5 → Haiku 5.5 → Gemini 2.5 Flash; guard `typesafe:jev-latest → anthropic:claude-haiku-5-5`; 144 airports |
-| 20 | `GET /api/docs` | PASS | 200, Swagger UI |
-| 21 | `GET /` | PASS | 200, title present, 9,195 bytes |
-| 22 | `GET /api/stats` without / with wrong token | PASS | 401 `admin token required`; 401 |
-| 23 | `DELETE /api/sessions/{id}` | PASS | 204 |
-| 24 | Empty body / no message | PASS | 422; 422 |
-| 25 | Q1 "Which airports in New England are strong candidates for terminal expansion?" | PASS | answered, Sonnet 5.5, tools `rank_airports, about, airport_score`, 0.0326 USD, 200 words; BOS CPS 76.9 first, BTV second |
-| 26 | Follow-up "Why is the first one on top?" (same session) | PASS | answered from prior context, tools `[]`, 0.0085 USD, 106 words; utilization 99.6% of 412,000 adds 26.4 points |
-| 27 | Q2 "Compare LA and Santa Ana airport congestion levels." | PASS | answered, `compare_airports`, 0.0137 USD, 152 words; SNA 70.3 vs LAX 61.3 on the congestion lens; "I took LA to mean LAX" |
-| 28 | Follow-up "Where do their capacity numbers come from?" | PASS | answered, tools `[]`, 0.0083 USD, 117 words; FAA service volume 675,000 and 355,000, 2014 profiles 163.8/h → 655,200 and 55.2/h → 220,800 as cross-check |
-| 29 | Q3 "What is the percentage of long haul flights out of Anchorage airport?" | PASS | answered, `traffic_mix`, 0.0087 USD, 71 words; 31.0% = 27,305 of 87,988 departures in 2025 |
-| 30 | Follow-up "And the year before?" | PASS | answered, `traffic_mix`, 0.0090 USD, 51 words; 29.9% = 28,080 of 93,961 in 2024 |
-| 31 | Q4 "What is the unmet flight demand in SFO airport and why?" | PASS | answered, `unmet_demand`, 0.0129 USD, 150 words; lens 64.4, "inferred, not a count of flights", load factor 0.8231 (86.5th pct) main driver, 18.93% of 143,415 delayed |
-| 32 | Greeting costs nothing | PASS | "hi" → answered, guardrail `intro`, cost 0.0, latency 0 ms |
-| 33 | Off-topic refusal names the scope | PASS | poem → `refused_off_topic` by `jev-1.14.0`, cost 0.0; text starts "I can only help with capacity pressure at US hub airports: ranking and comparing airports, congestion, unmet demand, traffic mix and current FAA status" |
-| 34 | Injection stopped by the regex layer, no model call | PASS | → `refused_injection`, guardrail `regex`, cost 0.0, latency 0 ms |
-| 35 | False positive answered normally (local, commit e4899f0; live hit the IP limit, see 40) | PASS | "Ignore the West Coast airports; which New England airport is most congested?" → answered, Sonnet 5.5, BOS and BTV named, 0.0447 USD |
-| 36 | One question in the other product language (local) | PASS | Hebrew question → answered in Hebrew by Sonnet 5.5, 0.0129 USD: Boston and Burlington lead, capacity is the FAA service volume (measured) |
-| 37 | Grounding spot check against the engine | PASS | `agent score BOS`: utilization 0.9964 / `utilization_pct` 99.6, `delayed15_pct` 22.72, `load_factor_pct` 81.7, `long_haul_pct` 7.2, contributions 26.4 and 20.38 — every figure in answers 25–26 is a tool field, no model-computed sum; local eval of the 4 brief + 3 follow-up cases: 7/7, `ungrounded runs: 0` |
+| 19 | `GET /health` | PASS | `agent accept`: 200; models Sonnet 5.5 → Haiku 5.5 → Gemini 2.5 Flash; guard `typesafe:jev-latest → anthropic:claude-haiku-5-5`; 144 airports |
+| 20 | `GET /api/docs` | PASS | `agent accept`: 200, Swagger UI |
+| 21 | `GET /` | PASS | `agent accept`: 200, title present, 9,195 bytes |
+| 22 | `GET /api/stats` without / with wrong token | PASS | `agent accept`: 401 `admin token required`; 401 |
+| 23 | `DELETE /api/sessions/{id}` | PASS | `agent accept`: 204 |
+| 24 | Empty body / no message | PASS | `agent accept`: 422; 422 |
+| 25 | Q1 "Which airports in New England are strong candidates for terminal expansion?" | PASS | `agent accept` (case brief-1): answered, Sonnet 5.5, tools `rank_airports, about, airport_score`, 0.0326 USD, 200 words; BOS CPS 76.9 first, BTV second |
+| 26 | Follow-up "Why is the first one on top?" (same session) | PASS | `agent accept` (case fu-ne-why-first): answered from prior context, tools `[]`, 0.0085 USD, 106 words; utilization 99.6% of 412,000 adds 26.4 points |
+| 27 | Q2 "Compare LA and Santa Ana airport congestion levels." | PASS | `agent accept` (case brief-2): answered, `compare_airports`, 0.0137 USD, 152 words; SNA 70.3 vs LAX 61.3 on the congestion lens; "I took LA to mean LAX" |
+| 28 | Follow-up "Where do their capacity numbers come from?" | PASS | `agent accept` (case fu-compare-then-capacity): answered, tools `[]`, 0.0083 USD, 117 words; FAA service volume 675,000 and 355,000, 2014 profiles 163.8/h → 655,200 and 55.2/h → 220,800 as cross-check |
+| 29 | Q3 "What is the percentage of long haul flights out of Anchorage airport?" | PASS | `agent accept` (case brief-3): answered, `traffic_mix`, 0.0087 USD, 71 words; 31.0% = 27,305 of 87,988 departures in 2025 |
+| 30 | Follow-up "And the year before?" | PASS | `agent accept` (case fu-anc-year-before): answered, `traffic_mix`, 0.0090 USD, 51 words; 29.9% = 28,080 of 93,961 in 2024 |
+| 31 | Q4 "What is the unmet flight demand in SFO airport and why?" | PASS | `agent accept` (case brief-4): answered, `unmet_demand`, 0.0129 USD, 150 words; lens 64.4, "inferred, not a count of flights", load factor 0.8231 (86.5th pct) main driver, 18.93% of 143,415 delayed |
+| 32 | Greeting costs nothing | PASS | `agent accept` (case greet-hi): "hi" → answered, guardrail `intro`, cost 0.0, latency 0 ms |
+| 33 | Off-topic refusal names the scope | PASS | `agent accept` (case off-poem): poem → `refused_off_topic` by `jev-1.14.0`, cost 0.0; text starts "I can only help with capacity pressure at US hub airports: ranking and comparing airports, congestion, unmet demand, traffic mix and current FAA status" |
+| 34 | Injection stopped by the regex layer, no model call | PASS | `agent accept` (case inj-ignore): → `refused_injection`, guardrail `regex`, cost 0.0, latency 0 ms |
+| 35 | False positive answered normally (local, commit e4899f0; live hit the IP limit, see 40) | PASS | `agent chat` locally (case fp-ignore-west): "Ignore the West Coast airports; which New England airport is most congested?" → answered, Sonnet 5.5, BOS and BTV named, 0.0447 USD |
+| 36 | One question in the other product language (local) | PASS | `agent chat` locally (case hebrew-new-england): Hebrew question → answered in Hebrew by Sonnet 5.5, 0.0129 USD: Boston and Burlington lead, capacity is the FAA service volume (measured) |
+| 37 | Grounding spot check against the engine | PASS | `agent eval --cases evals/accept/cases.yaml` (7/7, ungrounded 0) + `agent score BOS`: utilization 0.9964 / `utilization_pct` 99.6, `delayed15_pct` 22.72, `load_factor_pct` 81.7, `long_haul_pct` 7.2, contributions 26.4 and 20.38 — every figure in answers 25–26 is a tool field, no model-computed sum; local eval of the 4 brief + 3 follow-up cases: 7/7, `ungrounded runs: 0` |
 | 38 | Fallback: vendor 1 down, vendor 2 answers | PASS | `agent eval --down anthropic` on the ANC case: models `google-gla:gemini-2.5-flash`, 1/1, served by gemini-2.5-flash, 0.0015 USD; plus the committed `v3-anthropic-down` report 21/23 all served by Gemini |
-| 39 | Fallback: all vendors down, clean unavailable, no crash | PASS | invalid keys for all vendors at runtime → log `all models failed: FallbackExceptionGroup(…401…, ConnectionError)`; reply "All model providers are unavailable right now. Please try again in a minute." status `unavailable`, 0.0000 USD, exit 0 |
+| 39 | Fallback: all vendors down, clean unavailable, no crash | PASS | `agent chat` with invalid vendor keys in the environment: invalid keys for all vendors at runtime → log `all models failed: FallbackExceptionGroup(…401…, ConnectionError)`; reply "All model providers are unavailable right now. Please try again in a minute." status `unavailable`, 0.0000 USD, exit 0 |
 
 ## Batch 3 — rate limit (last; blocks this IP for the window)
 
 | # | Check | Result | Evidence |
 |---|---|---|---|
-| 40 | 429 with Retry-After using free turns | PASS | `POST /api/chat {"message":"hi"}` → `HTTP/1.1 429 Too Many Requests`, `retry-after: 2678`, body `Too many requests from your address. Try again later.` The window had been consumed by the live checks above together with browser use from the same network during the session, which is why checks 35–36 moved to a local run. |
+| 40 | 429 with Retry-After using free turns | PASS | `curl -X POST /api/chat` with a greeting: `POST /api/chat {"message":"hi"}` → `HTTP/1.1 429 Too Many Requests`, `retry-after: 2678`, body `Too many requests from your address. Try again later.` The window had been consumed by the live checks above together with browser use from the same network during the session, which is why checks 35–36 moved to a local run. |
 
 ## Round 2 addendum — capacity precedence and the extended eval set
 

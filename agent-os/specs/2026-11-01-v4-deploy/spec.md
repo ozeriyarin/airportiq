@@ -23,6 +23,7 @@ closeout pass; `docs/demo-script.md` numbers; provider caps dated. **Out:** cust
 4. The README assumptions / uncertainty / scoping table lists at least: proxy not profitability, uncalibrated weights, capacity sources and the model RMSE, domestic-only delays, hand-downloaded T-100 vintage, COVID exclusions, universe = hub airports, sessions and ledger ephemeral.
 5. DESIGN names the three asked topics as sections (scoring methodology, key tradeoffs, where/how AI is used) and no doc contains "still to come", "TODO", "TBD" or "pending".
 6. `docs/demo-script.md` numbers match `agent score` output and the README.
+7. (Round 2) `agent accept <url>` runs the endpoint checks and `evals/accept/cases.yaml` over HTTP with session continuity for follow-ups, prints a pass/fail table with evidence per row, exits 0 only when every row passes, and runs offline against a fake-model app; `docs/ACCEPTANCE.md` names the command behind every evidence row.
 
 ## Tasks
 
