@@ -1,0 +1,22 @@
+# Agent OS standards index. /inject-standards reads the descriptions to pick what applies to a task.
+root:
+  ai-calls:
+    description: Every model call goes through Pydantic AI; retrying transport, SDK retries off, FallbackModel across vendors (Sonnet, Haiku, Gemini); typed output always; prompt changes ship with an eval report
+  budget:
+    description: Monthly cap enforced by the SQLite ledger before every paid call (reserve/settle/release), per-turn UsageLimits, provider-side limits mirrored and dated
+  data-sources:
+    description: Generated airport registry in config/airports.yaml; FAA TAF, BTS On-Time and hand-downloaded T-100 aggregated at ingest into committed Parquet queried via DuckDB; FAA capacity profiles extracted into YAML; FAA NAS status live with cache; clients take a transport and are faked with MockTransport
+  deployment:
+    description: Render Blueprint, python runtime, uv sync --frozen, /health probe, secrets as sync:false env vars, agent verify record in the README, ephemeral disk acknowledged
+  evals:
+    description: evals/cases.yaml categories in_scope/off_topic/injection/false_positive/followup; agent eval writes evals/results/<tag>; exit 0/1/2 gate; grounding check; outage simulation with --down
+  guardrails:
+    description: Regex layer, anchored intro, then Jev decision model with Haiku fallback; policy in code; refusals are fixed strings; user text is data
+  python-style:
+    description: Python 3.12, src layout, one package per concern, Pydantic at every boundary, ruff, one-line comments only when intent is not obvious, dated commit format
+  scoring:
+    description: Deterministic Capacity Pressure Score from five percentile-normalized components with versioned weights; measured vs modelled capacity always labelled; band and trend always attached; the LLM never produces a number
+  secrets-and-config:
+    description: Secrets only via Settings from env, validated at startup, never logged; non-secret config in config/*.yaml, versioned; a missing key removes a model
+  testing:
+    description: pytest offline only; FunctionModel/TestModel fakes, MockTransport for HTTP; every spec criterion has test_criterion_<n>_<slug>; ruff + pytest green before commit
