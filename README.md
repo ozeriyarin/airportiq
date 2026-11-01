@@ -134,6 +134,10 @@ Verified 2026-11-01 at https://airportiq.onrender.com
 
 (Re-verified after the scoring 1.1.0 redeploy, commit `eee30c3`; the first record on the same day read 14610 ms, 0.0146 USD.)
 
+`uv run agent accept https://airportiq.onrender.com` repeats the live acceptance pass (endpoints, the four brief
+questions, follow-ups, guard layers) from `evals/accept/cases.yaml` and exits 0 only when every row passes; the
+full evidence of the pass before submission is in [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md).
+
 Free-tier facts: the service sleeps after 15 minutes idle (30–60 s cold start on the next request); the disk is
 ephemeral, so the SQLite spend ledger and in-memory sessions reset on redeploy; the provider-side caps below are
 therefore the hard backstop. Production would use a persistent database for both.

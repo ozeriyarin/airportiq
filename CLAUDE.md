@@ -36,6 +36,8 @@ uv run agent registry                    # regenerate config/airports.yaml from 
 uv run agent ingest                      # rebuild data/snapshots from FAA/BTS sources
 uv run agent profiles                    # extract FAA capacity profile rates into config
 uv run agent score SFO                   # one airport's CPS breakdown, no model call
+uv run agent verify https://airportiq.onrender.com   # health + one scored question, dated record
+uv run agent accept https://airportiq.onrender.com   # live acceptance pass, pass/fail table, exit 0/1
 uv run agent eval --repeat 3 --tag latest
 uv run agent eval --down anthropic --tag anthropic-outage
 ```
