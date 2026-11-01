@@ -71,8 +71,6 @@ class Settings(BaseSettings):
     google_api_key: str | None = Field(default=None, validation_alias=AliasChoices("AIRPORTIQ_GOOGLE_API_KEY", "GOOGLE_API_KEY"))
     openrouter_api_key: str | None = Field(default=None, validation_alias=AliasChoices("AIRPORTIQ_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"))
     typesafe_api_key: str | None = Field(default=None, validation_alias=AliasChoices("AIRPORTIQ_TYPESAFE_API_KEY", "TYPESAFE_API_KEY"))
-    opensky_client_id: str | None = None
-    opensky_client_secret: str | None = None
     budget_usd: float = Field(default=10.0, gt=0)
     db_path: Path = Path("data/agent.db")
     admin_token: str | None = None
