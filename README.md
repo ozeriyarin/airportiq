@@ -106,20 +106,59 @@ Every figure is computed by `src/app/scoring` from the snapshot; the LLM only ch
   model RMSE, and `data_through` per source. COVID years 2020–2021 are never a trend or growth endpoint.
 - **Not calibrated:** the weights express the investment reading of the brief (congestion first, growth second,
   traffic mix last). They are assumptions, versioned so any change is auditable, not fitted to realised outcomes.
+- **On the committed snapshot** (`agent score`): SFO has CPS 73.1 (utilization 0.97 of 393,000 operations, load
+  factor 0.823, 13.6% long-haul of 190,110 departures in 2025); ANC has 31.0% long-haul of 87,988 departures in
+  2025 with cargo at 59% of movements; BOS leads New England on the expansion lens (76.9). The worked SFO example
+  with every percentile is in [docs/DESIGN.md](docs/DESIGN.md) and is asserted by a test.
+
+## Deployment
+
+Live at **https://airportiq.onrender.com** (Render free tier, Frankfurt, from `render.yaml`; every push to `main`
+redeploys). Verification record from `uv run agent verify https://airportiq.onrender.com`:
+
+```
+Verified 2026-11-01 at https://airportiq.onrender.com
+- /health: status ok, version 0.1.0, models anthropic:claude-sonnet-5-5 -> anthropic:claude-haiku-5-5 -> google-gla:gemini-2.5-flash,
+  guard typesafe:jev-latest → anthropic:claude-haiku-5-5, data 144 airports, taf 1976..2055, ontime 202301..202512, t100 2023..2025
+- /api/chat: status answered, served by claude-sonnet-5-5, tools ['rank_airports', 'about', 'airport_score'], 14610 ms, 0.0146 USD
+```
+
+Free-tier facts: the service sleeps after 15 minutes idle (30–60 s cold start on the next request); the disk is
+ephemeral, so the SQLite spend ledger and in-memory sessions reset on redeploy; the provider-side caps below are
+therefore the hard backstop. Production would use a persistent database for both.
 
 ## Spend limits
 
-- Code: `BUDGET_USD` enforced before every paid call (reserve → settle / release).
-- Provider consoles: Anthropic, Google, TypeSafe caps set on `TODO(date)` by the owner.
+- Code: `BUDGET_USD` (10 USD per month) enforced before every paid call (reserve → settle / release); 0.25 USD and
+  16 model requests per turn; 20 requests per IP per hour, 200 per day. The guard's sub-cent screening call is not
+  ledgered (known under-count, bounded by the per-day request cap).
+- Provider consoles: Anthropic, Google and TypeSafe caps set by the owner (date recorded at closeout).
 - Prices: `config/prices.yaml`, verified 2026-11-01.
 
 ## Evals
 
-| Report | Models | Result |
-|---|---|---|
-| `evals/results/ci-smoke` | TestModel (offline) | statuses and tools only; see the file |
+`evals/cases.yaml` holds 23 live cases (11 in scope including the brief's four questions, 3 off topic, 3 injection, 3 false positive, 3 follow-up); every number in an answer must appear in that turn's tool outputs.
+
+| Report | Models | Result | Cost and latency | Note |
+|---|---|---|---|---|
+| `evals/results/v3-baseline` | anthropic:claude-sonnet-5-5 → anthropic:claude-haiku-5-5 → google-gla:gemini-2.5-flash | 23/23 cases, repeat 2, ungrounded runs 0 | 0.4489 USD, cache share 47%, p50 5209 ms | prompt 0.3.0; the first baseline (prompt 0.2.0) was 16/23, every miss but three was the model converting ratios to percentages, fixed by `_pct` tool fields |
+| `evals/results/v3-anthropic-down` | google-gla:gemini-2.5-flash | 21/23 cases, repeat 1, ungrounded runs 1 | 0.0402 USD, cache share 29%, p50 3142 ms | `--down anthropic`: Gemini alone; both misses are presentation (31% vs 31.0, weights as 30% not 0.3) |
+| `evals/results/ci-smoke` | TestModel (offline) | statuses and tools only | 0 USD | runs in CI on every push |
 
 ## Assumptions, uncertainty, scoping
 
-The full table lands with v2. Standing items: the score is a capacity-pressure proxy, not a profitability
-estimate; the platform was lifted from an earlier project of the author and adapted in v0.
+| Topic | What we assume or know | How the agent communicates it |
+|---|---|---|
+| Profitability | The score is a capacity-pressure proxy for where added capacity would be absorbed; construction cost, financing and revenue are out of scope | Stated in the intro, the footer and every `limitations` list |
+| Weights and thresholds | Chosen to express the investment reading of the brief, versioned in `config/scoring.yaml`; not calibrated to realised outcomes | `scoring_version` in every result; first limitation on every score |
+| Capacity | FAA annual service volume for 140 of 144 airports (measured); FAA profile rates for 31 as cross-check (dated 2014–2019); runway model for 3 (RMSE 92,932 ops/yr); GUM has none | `capacity.source` and `uncertainty_operations` in every result; the answer must name the source |
+| Capacity blend and hours | Profile rates blended visual 0.7 / marginal 0.2 / instrument 0.1 and converted with 4,000 hours-equivalent; both are planning heuristics | Config values; README; DESIGN |
+| Delays | BTS On-Time covers domestic reporting carriers only; international and small operators are missing; years under 3,000 departures are dropped | Limitation on every score with a delay value |
+| T-100 vintage | Downloaded by hand on 1.11.2026 through the TranStats form; the manifest records fields and date; refresh is manual | `data_through` per source; manifest; README data section |
+| Growth | FAA's own forecast, not ours; actual CAGR runs FY2019→FY2024; 2020–2021 never used as endpoints | Growth detail carries both CAGRs and the years; COVID years listed in the data facts |
+| Long haul | 3,000 statute miles or more (about six hours), all carriers including cargo; international share reported beside it | Tool note and the data facts; the answer names the year and the denominator |
+| Universe | FAA large, medium and small hub airports (144); non-hub and non-US airports are out of scope | `NotFound` lists valid ids; refusal text names the scope |
+| Normalization | Percentile rank within the universe; a component missing for an airport renormalizes the weights | Limitation names the missing components |
+| Live status | FAA NAS status is a "right now" signal shown beside the score, never blended; cached 10 minutes | Tool note; `available=false` with a reason on failure |
+| Sessions and spend ledger | In memory and SQLite on an ephemeral disk; a restart forgets conversations and month-to-date spend; provider caps are the backstop | README deployment section |
+| Platform provenance | The platform (chain, guard, ledger, evals) was lifted from an earlier project of the author; the data layer, KPI and prompts were built on 1.11.2026 | DESIGN key tradeoffs |

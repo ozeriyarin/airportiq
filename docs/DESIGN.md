@@ -172,8 +172,21 @@ render.yaml    Render Blueprint (python runtime, uv sync --frozen --no-dev, /hea
 ## Security and privacy
 
 Secrets only from env; never logged. Logs carry session prefixes, statuses and model names, never chat content.
-`/api/stats` behind a constant-time admin token. User text and tool text are data, never instructions, and the
-`injection` eval category proves it on every run.
+`/api/stats` sits behind a constant-time admin token; when `ADMIN_TOKEN` is unset (local runs) the endpoint is
+open by design and exposes only spend counts, and the Render blueprint always generates a token. The live FAA XML
+is parsed with defusedxml. The client IP for rate limiting is taken from the first `X-Forwarded-For` hop, which is
+spoofable, so the per-IP limit is a fairness measure and the global per-day cap is the spend ceiling. User text
+and tool text are data, never instructions, and the `injection` eval category proves it on every run.
+
+## What the evals showed
+
+The first live baseline (prompt 0.2.0) passed 16 of 23 cases; every miss but three was the model converting a
+ratio into a percentage itself (0.1893 became 18.93%), which the grounding check rightly rejects because the
+number was not in a tool result. The fix was in the tools, not the prompt alone: every share now ships with a
+`_pct` field, and the prompt says to quote one or the other, never to multiply. The remaining three were test
+authoring (a length cap too tight for a two-airport answer, source names missing from the data facts, a case that
+required two spellings of one number). The reports under `evals/results/` are the evidence; the README table
+summarizes them.
 
 ## What production would change
 

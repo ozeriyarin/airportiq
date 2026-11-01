@@ -119,19 +119,28 @@ class Engine:
             per_year, low, high, trend = _series(raw.utilization)
             value = self._latest(raw.utilization)
             note = f"capacity {raw.capacity.source}" + (" (estimate)" if raw.capacity.source == "runway_model" else " (measured)")
+            detail = {"annual_capacity": float(raw.capacity.annual_operations)}
+            if value is not None:
+                detail["utilization_pct"] = round(100 * value, 1)
             return ComponentValue(name=name, label=c.label, unit=c.unit, value=_r(value), percentile=percentile, per_year=per_year,
-                                  low=low, high=high, trend=trend, detail={"annual_capacity": float(raw.capacity.annual_operations)}, note=note)
+                                  low=low, high=high, trend=trend, detail=detail, note=note)
         if name == "delay":
             d15 = {y: v["delayed15_share"] for y, v in raw.delay.items()}
             per_year, low, high, trend = _series(d15)
             year = max(raw.delay) if raw.delay else None
             detail = {k: round(v, 4) for k, v in raw.delay[year].items()} if year else {}
+            for k in ("delayed15_share", "cancelled_share"):
+                if k in detail:
+                    detail[k.replace("_share", "_pct")] = round(100 * detail[k], 2)
             detail.update({f"percentile_{k}": self._percentiles[f"delay_{k}"][airport] for k in ("d15", "taxi") if airport in self._percentiles[f"delay_{k}"]})
             return ComponentValue(name=name, label=c.label, unit=c.unit, value=percentile, percentile=percentile, per_year=per_year, low=low, high=high,
                                   trend=trend, detail=detail, note="per_year/low/high/trend are the delayed-15 share; value is the combined percentile")
         if name == "growth":
             g = raw.growth or {}
             detail = {k: round(v, 4) for k, v in g.items()}
+            for k in ("forecast_cagr", "actual_cagr"):
+                if k in detail:
+                    detail[f"{k}_pct"] = round(100 * detail[k], 2)
             for k in ("forecast", "actual"):
                 if airport in self._percentiles[f"growth_{k}"]:
                     detail[f"percentile_{k}"] = self._percentiles[f"growth_{k}"][airport]
@@ -139,12 +148,16 @@ class Engine:
                                   note="value is the combined percentile; CAGRs are in detail (FAA TAF enplanements)")
         if name == "load_factor":
             per_year, low, high, trend = _series(raw.load_factor)
-            return ComponentValue(name=name, label=c.label, unit=c.unit, value=_r(self._latest(raw.load_factor)), percentile=percentile,
-                                  per_year=per_year, low=low, high=high, trend=trend, note="scheduled passenger service, BTS T-100")
+            lf = self._latest(raw.load_factor)
+            return ComponentValue(name=name, label=c.label, unit=c.unit, value=_r(lf), percentile=percentile, per_year=per_year, low=low, high=high,
+                                  trend=trend, detail={"load_factor_pct": round(100 * lf, 1)} if lf is not None else {}, note="scheduled passenger service, BTS T-100")
         shares = {y: v["long_haul_share"] for y, v in raw.mix.items()}
         per_year, low, high, trend = _series(shares)
         year = max(raw.mix) if raw.mix else None
         detail = {k: round(v, 4) for k, v in raw.mix[year].items()} if year else {}
+        for k in ("long_haul_share", "international_share", "cargo_share"):
+            if k in detail:
+                detail[k.replace("_share", "_pct")] = round(100 * detail[k], 1)
         return ComponentValue(name=name, label=c.label, unit=c.unit, value=_r(self._latest(shares)), percentile=percentile, per_year=per_year,
                               low=low, high=high, trend=trend, detail=detail, note=f"segments of {cfg.long_haul_miles}+ miles, all carriers incl. cargo")
 

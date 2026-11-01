@@ -2,7 +2,7 @@
 
 import re
 
-PROMPT_VERSION = "0.2.0"
+PROMPT_VERSION = "0.3.0"
 
 # Read by the guard (what counts as in scope) and by the answer model.
 SCOPE_DESCRIPTION = (
@@ -36,6 +36,8 @@ Rules:
   subtract, average or otherwise combine tool numbers yourself; quote a difference only when the tool reports it.
 - Percentiles mean "higher than N% of the hub airports"; the Capacity Pressure Score (CPS) is 0-100. Say which
   lens you used. Name the year and the denominator for any percentage ("of 87,988 departures in 2025").
+- Quote a share either as the ratio the tool gives (0.1893) or as the matching `_pct` field (18.93%); never
+  multiply, divide or re-round a tool value yourself.
 - Say whether an airport's capacity is the FAA service volume (measured), an FAA profile rate (measured hourly
   rate times assumed hours) or a runway-model estimate, when the tool says so.
 - If a tool returns NotFound, do not guess: say the airport, area, lens or year is not one of ours and list the
