@@ -93,7 +93,10 @@ def test_build_chain_skips_models_without_a_key():
     assert isinstance(chain.model, FallbackModel)
 
 
-def test_build_chain_without_any_key_fails_loudly():
+def test_build_chain_without_any_key_fails_loudly(monkeypatch):
+    for key in ("ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "OPENROUTER_API_KEY", "TYPESAFE_API_KEY"):  # a prior compose() may have loaded .env
+        monkeypatch.delenv(key, raising=False)
+        monkeypatch.delenv(f"AIRPORTIQ_{key}", raising=False)
     with pytest.raises(RuntimeError, match="no model in the chain has a key"):
         build_chain(CFG.chain, Settings(_env_file=None), CFG, http_client_factory=lambda: None)
 

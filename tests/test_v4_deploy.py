@@ -16,6 +16,7 @@ from app.api.app import create_app
 from app.api.sessions import SessionStore
 from app.config import ROOT
 from app.evals.cases import load_cases
+from app.llm.models import retrying_http_client
 
 README = (ROOT / "README.md").read_text(encoding="utf-8")
 DESIGN = (ROOT / "docs" / "DESIGN.md").read_text(encoding="utf-8")
@@ -68,7 +69,10 @@ def test_criterion_6_demo_script_numbers_match_the_readme():
 
 async def test_criterion_7_accept_command_runs_offline_and_reports_per_row(service, budget, monkeypatch):
     app = create_app(service, SessionStore(max_turns=5, ttl_s=60), budget, model_names=["fake"], guard_name="fake-guard", admin_token="s")
-    http = httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), base_url="http://accept.test")
+    asgi = httpx2.ASGITransport(app=app)
+    with pytest.raises(httpx2.HTTPStatusError):  # the default validating client would abort on the deliberate 401
+        await retrying_http_client(attempts=1, timeout_s=5, max_wait_s=0, wrapped=asgi).get("http://accept.test/api/stats")
+    http = retrying_http_client(attempts=1, timeout_s=5, max_wait_s=0, wrapped=asgi, validate=False)
     report = await run_accept(http, "http://accept.test")
     names = [r.check for r in report.rows]
     assert names[:6] == ["GET /health", "GET /api/docs", "GET / chat page", "GET /api/stats without and with a wrong token", "DELETE /api/sessions/{id}", "POST /api/chat empty body / no message"]
@@ -80,7 +84,7 @@ async def test_criterion_7_accept_command_runs_offline_and_reports_per_row(servi
     brief = next(r for r in report.rows if r.check.endswith("brief-1-new-england-expansion"))
     assert not brief.passed and "FAIL:" in brief.evidence and "tools" in brief.evidence  # the fake model answers 'ok' without tools
     assert report.exit_code == 1 and "| Check | Result | Evidence |" in render(report)
-    monkeypatch.setattr(cli_module, "retrying_http_client", lambda **kw: httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), base_url="http://accept.test"))
+    monkeypatch.setattr(cli_module, "retrying_http_client", lambda **kw: retrying_http_client(attempts=1, timeout_s=5, max_wait_s=0, wrapped=asgi, validate=False))
     result = await asyncio.to_thread(CliRunner().invoke, cli_module.cli, ["accept", "http://accept.test"])
     assert result.exit_code == 1 and "checks passed" in result.output
     accept_doc = (ROOT / "docs" / "ACCEPTANCE.md").read_text(encoding="utf-8")

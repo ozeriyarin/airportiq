@@ -35,9 +35,10 @@ def _retryable(exc: BaseException) -> bool:
 
 
 def retrying_http_client(
-    *, attempts: int, timeout_s: float, max_wait_s: float, wrapped: httpx2.AsyncBaseTransport | None = None
+    *, attempts: int, timeout_s: float, max_wait_s: float, wrapped: httpx2.AsyncBaseTransport | None = None, validate: bool = True
 ) -> httpx2.AsyncClient:
-    """An httpx client whose transport retries 429/5xx/network errors with Retry-After or exponential backoff."""
+    """An httpx client whose transport retries 429/5xx/network errors with Retry-After or exponential backoff.
+    `validate=False` returns 4xx/5xx responses instead of raising (the acceptance pass expects 401 and 422)."""
     transport = AsyncHTTPX2TenacityTransport(
         config=RetryConfig(
             retry=retry_if_exception(_retryable),
@@ -46,7 +47,7 @@ def retrying_http_client(
             reraise=True,
         ),
         wrapped=wrapped,
-        validate_response=lambda r: r.raise_for_status(),
+        validate_response=(lambda r: r.raise_for_status()) if validate else None,
     )
     return httpx2.AsyncClient(transport=transport, timeout=timeout_s)
 

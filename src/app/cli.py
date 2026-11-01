@@ -215,7 +215,7 @@ def accept(url: str, cases: Path | None = ACCEPT_CASES_OPT, timeout_s: float = 1
     base = url.rstrip("/")
 
     async def run():
-        http = retrying_http_client(attempts=3, timeout_s=timeout_s, max_wait_s=30)
+        http = retrying_http_client(attempts=3, timeout_s=timeout_s, max_wait_s=30, validate=False)
         async with http:
             return await run_accept(http, base, cases or ACCEPT_DIR / "cases.yaml")
 
