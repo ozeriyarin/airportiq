@@ -49,8 +49,12 @@ def _client(log, **kw) -> OpenSkyClient:
     return OpenSkyClient(http, "cid" if creds else None, "sec" if creds else None, now=lambda: clock[0])
 
 
-async def test_criterion_1_optional_credentials_anonymous_or_client():
+async def test_criterion_1_optional_credentials_anonymous_or_client(monkeypatch):
+    for key in ("OPENSKY_CLIENT_ID", "OPENSKY_CLIENT_SECRET"):  # a prior compose() may have loaded .env
+        monkeypatch.delenv(key, raising=False)
     assert Settings(_env_file=None).opensky_client_id is None
+    masked = repr(Settings(_env_file=None, anthropic_api_key="value-one", opensky_client_secret="value-two"))  # SecretStr never shows
+    assert "value-one" not in masked and "value-two" not in masked and "**********" in masked
     log: list = []
     anon = _client(log, creds=False)
     r = await anon.aircraft_near("SFO", 37.62, -122.38)

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -67,16 +67,16 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore", populate_by_name=True)
 
     # AIRPORTIQ_-prefixed names win over the plain ones: shared cloud environments withhold ANTHROPIC_API_KEY.
-    anthropic_api_key: str | None = Field(default=None, validation_alias=AliasChoices("AIRPORTIQ_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY"))
-    google_api_key: str | None = Field(default=None, validation_alias=AliasChoices("AIRPORTIQ_GOOGLE_API_KEY", "GOOGLE_API_KEY"))
-    openrouter_api_key: str | None = Field(default=None, validation_alias=AliasChoices("AIRPORTIQ_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"))
-    typesafe_api_key: str | None = Field(default=None, validation_alias=AliasChoices("AIRPORTIQ_TYPESAFE_API_KEY", "TYPESAFE_API_KEY"))
-    opensky_client_id: str | None = None  # OpenSky registered client; anonymous (400 credits/day) when unset
-    opensky_client_secret: str | None = None
+    anthropic_api_key: SecretStr | None = Field(default=None, validation_alias=AliasChoices("AIRPORTIQ_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY"))
+    google_api_key: SecretStr | None = Field(default=None, validation_alias=AliasChoices("AIRPORTIQ_GOOGLE_API_KEY", "GOOGLE_API_KEY"))
+    openrouter_api_key: SecretStr | None = Field(default=None, validation_alias=AliasChoices("AIRPORTIQ_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"))
+    typesafe_api_key: SecretStr | None = Field(default=None, validation_alias=AliasChoices("AIRPORTIQ_TYPESAFE_API_KEY", "TYPESAFE_API_KEY"))
+    opensky_client_id: SecretStr | None = None  # OpenSky registered client; anonymous (400 credits/day) when unset
+    opensky_client_secret: SecretStr | None = None
     opensky_cache_min: int = Field(default=2, ge=1)
     budget_usd: float = Field(default=10.0, gt=0)
     db_path: Path = Path("data/agent.db")
-    admin_token: str | None = None
+    admin_token: SecretStr | None = None
     model_mode: str = "live"  # "test" answers every call offline with TestModel
     port: int = 8000
     faa_user_agent: str = "Mozilla/5.0 airportiq/0.1 (github.com/ozeriyarin/airportiq)"  # faa.gov rejects bare UAs
@@ -86,10 +86,15 @@ class Settings(BaseSettings):
     def key_for(self, model_name: str) -> str | None:
         """The vendor key a Pydantic AI model string needs, or None when it is not set."""
         prefix = model_name.split(":", 1)[0]
-        return {
+        secret = {
             "anthropic": self.anthropic_api_key,
             "google-gla": self.google_api_key,
             "google-vertex": self.google_api_key,
             "openrouter": self.openrouter_api_key,
             "typesafe": self.typesafe_api_key,
         }.get(prefix)
+        return secret.get_secret_value() if secret else None
+
+    @staticmethod
+    def reveal(secret: SecretStr | None) -> str | None:
+        return secret.get_secret_value() if secret else None

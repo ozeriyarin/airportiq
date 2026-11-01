@@ -93,7 +93,7 @@ def compose(*, model_mode: str | None = None, down: list[str] | None = None, onl
     deps = ToolContext(
         product_name=config.name, registry=registry, store=store, profiles=profiles, engine=engine,
         live=NasStatusClient(live_http, settings.faa_user_agent, cache_min=settings.live_cache_min),
-        opensky=OpenSkyClient(live_http, settings.opensky_client_id, settings.opensky_client_secret, cache_min=settings.opensky_cache_min),
+        opensky=OpenSkyClient(live_http, Settings.reveal(settings.opensky_client_id), Settings.reveal(settings.opensky_client_secret), cache_min=settings.opensky_cache_min),
     )
     service = Service(build_agent(chain.model, cache=config.models.cache), Guard(guard_model), budget, config.limits, prices, deps)
     return App(settings, config, service, budget, chain.names, guard_name, store.summary() if store else None)
@@ -122,7 +122,7 @@ def serve(host: str = "0.0.0.0", port: int | None = None, test: bool = TEST_FLAG
         model_names=app.model_names,
         guard_name=app.guard_name,
         limiter=RateLimiter(per_ip_per_hour=app.config.limits.per_ip_per_hour, global_per_day=app.config.limits.global_per_day),
-        admin_token=app.settings.admin_token,
+        admin_token=Settings.reveal(app.settings.admin_token),
         data=app.data,
     )
     uvicorn.run(web, host=host, port=port or app.settings.port)

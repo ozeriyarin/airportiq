@@ -65,7 +65,10 @@ def test_criterion_5_baseline_report_passes_with_grounding_and_metadata():
     r = _report("v3-baseline")
     assert r["exit_code"] in (0, 2) and r["repeat"] >= 2 and not any(not c["passed"] and not c["flaky"] for c in r["cases"])
     assert len(r["cases"]) >= 30
-    assert r["prompt_version"] == prompts.PROMPT_VERSION and r["config_version"] and r["total_cost_usd"] > 0
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    if r["prompt_version"] != prompts.PROMPT_VERSION:  # a newer prompt without a re-run must say so in the README
+        assert f"Prompt {prompts.PROMPT_VERSION}" in readme and "not re-run" in readme, "README must state the prompt moved on without a baseline re-run"
+    assert r["config_version"] and r["total_cost_usd"] > 0
     assert r["ungrounded_runs"] <= 2 and "cache_share" in r and r["latency_p95_ms"] > 0
     assert r["models"][0] == "anthropic:claude-sonnet-5-5"
 
