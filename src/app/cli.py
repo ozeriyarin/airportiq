@@ -21,12 +21,18 @@ from app.api.app import create_app
 from app.api.ratelimit import RateLimiter
 from app.api.sessions import SessionStore
 from app.config import CONFIG_DIR, ROOT, AgentConfig, Settings, load_agent_config, load_prices
+from app.data.live import NasStatusClient
+from app.data.profiles import load_profiles
+from app.data.registry import AirportRegistry
+from app.data.store import Store
 from app.decide.guard import Guard, build_guard_model, offline_guard_model
 from app.evals.cases import load_cases
 from app.evals.report import render_markdown
 from app.evals.runner import run_all
 from app.llm.budget import Budget
 from app.llm.models import answer_chain, build_chain, retrying_http_client
+from app.scoring.config import load_scoring_config
+from app.scoring.engine import Engine
 
 os.environ.setdefault("PYDANTIC_AI_NO_BANNER", "1")
 cli = typer.Typer(no_args_is_help=True, add_completion=False)
@@ -71,9 +77,27 @@ def compose(*, model_mode: str | None = None, down: list[str] | None = None, onl
         guard_model = build_guard_model(decision, fallback, config.models.guard_confidence)
         guard_name = (f"{config.models.guard_decision} → " if decision else "") + config.models.guard_fallback
     budget = Budget(settings.db_path, settings.budget_usd)
-    deps = ToolContext(product_name=config.name)
+    registry = AirportRegistry.load() if (CONFIG_DIR / "airports.yaml").exists() else None
+    snapshot_dir = snapshot_path(settings.snapshot_dir)
+    store = Store.open_if_present(snapshot_dir)
+    if store is None:
+        log.warning("no snapshot at %s: scoring data unavailable until `agent ingest` runs", snapshot_dir)
+    if settings.model_mode == "test":  # offline: live calls fail fast and degrade, never touch the network
+        live_http = httpx2.AsyncClient(transport=httpx2.MockTransport(lambda r: httpx2.Response(503, text="test mode")))
+    else:
+        live_http = retrying_http_client(attempts=config.models.retry_attempts, timeout_s=config.models.timeout_s, max_wait_s=config.models.retry_max_wait_s)
+    profiles = load_profiles()
+    engine = Engine(store, registry, load_scoring_config(), profiles) if store and registry else None
+    deps = ToolContext(
+        product_name=config.name, registry=registry, store=store, profiles=profiles, engine=engine,
+        live=NasStatusClient(live_http, settings.faa_user_agent, cache_min=settings.live_cache_min),
+    )
     service = Service(build_agent(chain.model, cache=config.models.cache), Guard(guard_model), budget, config.limits, prices, deps)
-    return App(settings, config, service, budget, chain.names, guard_name)
+    return App(settings, config, service, budget, chain.names, guard_name, store.summary() if store else None)
+
+
+def snapshot_path(p: Path) -> Path:
+    return p if p.is_absolute() else ROOT / p
 
 
 def default_cases(test: bool) -> Path:
@@ -206,6 +230,106 @@ def verification_record(base: str, health: dict, chat: dict) -> str:
         f"- /api/chat: status {chat.get('status')}, served by {chat.get('served_by')}, tools {chat.get('tools_used')}, "
         f"{chat.get('latency_ms')} ms, {chat.get('cost_usd', 0):.4f} USD",
     ])
+
+
+SOURCE_OPT = typer.Option([], "--source", help="taf | ontime | t100 (repeatable); default: all three")
+RAW_DIR_OPT = typer.Option(ROOT / "data" / "raw", help="where raw downloads live (gitignored)")
+
+
+@cli.command()
+def ingest(
+    source: list[str] = SOURCE_OPT, raw: Path = RAW_DIR_OPT, out: Path | None = None,
+    years: str = typer.Option("2023-2025", help="On-Time year range, inclusive"), long_haul_miles: int = 3000,
+) -> None:
+    """Fetch the public sources, aggregate them with DuckDB and write data/snapshots (run once, commit)."""
+    from app.data.ingest import SOURCES
+    from app.data.ingest import ingest as run_ingest
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    load_dotenv()
+    settings, config = Settings(), load_agent_config()
+    registry = AirportRegistry.load()
+    out_dir = snapshot_path(out or settings.snapshot_dir)
+    y0, y1 = (int(x) for x in years.split("-"))
+    chosen = tuple(source) if source else SOURCES
+
+    async def run():
+        http = retrying_http_client(attempts=config.models.retry_attempts, timeout_s=300, max_wait_s=config.models.retry_max_wait_s)
+        async with http:
+            return await run_ingest(registry, http, raw, out_dir, user_agent=settings.faa_user_agent, years=(y0, y1),
+                                    long_haul_miles=long_haul_miles, sources=chosen)
+
+    m = asyncio.run(run())
+    for name, sm in m.sources.items():
+        typer.echo(f"{name:7s} {sm.period:22s} {sm.rows:>8d} rows  {sm.method[:60]}")
+    typer.echo(f"snapshot written to {out_dir} ({m.airports} airports, registry {m.registry_version})")
+
+
+@cli.command()
+def score(airport: str, test: bool = TEST_FLAG) -> None:
+    """Print the Capacity Pressure Score breakdown for one airport (no model call)."""
+    app = compose(model_mode="test" if test else None)
+    deps = app.service.deps
+    if deps.engine is None or deps.registry is None:
+        typer.echo("no snapshot loaded; run `agent ingest`")
+        raise typer.Exit(code=1)
+    hit = deps.registry.find(airport)
+    if hit is None or isinstance(hit, list):
+        typer.echo(f"unknown or ambiguous airport {airport!r}")
+        raise typer.Exit(code=1)
+    s = deps.engine.score(hit.id)
+    cap = s.capacity
+    typer.echo(f"{s.airport} {s.name} ({s.city}, {s.state}; {s.division}; hub {s.hub_class})")
+    typer.echo(f"CPS {s.cps}  lenses {s.lenses}")
+    typer.echo(f"capacity {cap.annual_operations:,} ops/yr from {cap.source}" + (f" (RMSE {cap.uncertainty_operations:,})" if cap.uncertainty_operations else "")
+               + (f"; FAA profile {cap.profile_year}: {cap.profile_hourly_rate}/h -> {cap.profile_annual_operations:,}" if cap.profile_hourly_rate else ""))
+    for c in s.components:
+        band = f" band {c.low}..{c.high} trend {c.trend}" if c.low is not None else ""
+        typer.echo(f"  {c.name:12s} value {c.value}  pct {c.percentile}{band}  {c.detail}")
+    for d in s.contributions:
+        typer.echo(f"  contribution {d['component']:12s} {d['contribution']}")
+    for lim in s.limitations:
+        typer.echo(f"  ! {lim}")
+
+
+@cli.command()
+def profiles(raw: Path = RAW_DIR_OPT, out: Path = CONFIG_DIR / "capacity_profiles.yaml") -> None:
+    """Extract hourly capacity rates from the FAA Airport Capacity Profile PDFs into config (run once, commit)."""
+    from app.data.profiles import ProfilesFile, dump_profiles, extract_dir
+
+    base = "https://www.faa.gov/sites/faa.gov/files/airports/planning_capacity/profiles"
+    rates = extract_dir(raw / "profiles", base)
+    dump_profiles(ProfilesFile(version="1.0.0", generated=date.today().isoformat(), source=base, profiles=rates), out)
+    for r in rates:
+        v, mg, i = r.primary("visual"), r.primary("marginal"), r.primary("instrument")
+        fmt = lambda c: f"{c.low}-{c.high}" if c else "n/a"  # noqa: E731
+        typer.echo(f"{r.airport} {r.year}: visual {fmt(v)}  marginal {fmt(mg)}  instrument {fmt(i)}")
+    typer.echo(f"{len(rates)} profiles written to {out}")
+
+
+@cli.command()
+def registry(raw: Path = ROOT / "data" / "raw", out: Path = CONFIG_DIR / "airports.yaml") -> None:
+    """Generate config/airports.yaml from the raw TAF zip, FAA enplanement xlsx and OurAirports CSVs (run once, commit)."""
+    from app.data.areas import load_areas
+    from app.data.enplanements import read_enplanements
+    from app.data.ourairports import read_airports as oa_airports
+    from app.data.ourairports import read_runways
+    from app.data.registry import build_registry, dump_registry, load_aliases
+    from app.data.taf import TafArchive
+
+    taf_zip = next(raw.glob("taf/APO100_TAF_Final_*.zip"))
+    enp_xlsx = next(raw.glob("faa/*enplanements*.xlsx"))
+    airports_csv, runways_csv = raw / "ourairports" / "airports.csv", raw / "ourairports" / "runways.csv"
+    data = build_registry(
+        TafArchive(taf_zip).airports(), read_enplanements(enp_xlsx.read_bytes()), oa_airports(airports_csv.read_bytes()),
+        read_runways(runways_csv.read_bytes()), load_areas(), load_aliases(),
+        generated=date.today().isoformat(),
+        sources={"taf": taf_zip.name, "faa_enplanements": enp_xlsx.name, "ourairports": "airports.csv + runways.csv"},
+    )
+    dump_registry(data, out)
+    by_class = {c: sum(a.hub_class == c for a in data.airports) for c in ("L", "M", "S")}
+    typer.echo(f"{len(data.airports)} airports written to {out}: {by_class}; without service volume: "
+               f"{sum(a.service_volume == 0 for a in data.airports)}; without runways: {sum(a.runways == 0 for a in data.airports)}")
 
 
 def main() -> None:

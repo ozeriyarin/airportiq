@@ -1,0 +1,35 @@
+{
+  "version": "1.0.0",
+  "written_at": "2026-11-01T09:42:01+00:00",
+  "registry_version": "1.0.0",
+  "airports": 144,
+  "long_haul_miles": 3000,
+  "covid_years": [
+    2020,
+    2021
+  ],
+  "sources": {
+    "taf": {
+      "method": "http GET https://taf.faa.gov/Downloads/APO100_TAF_Final_2025.zip",
+      "fetched_at": "2026-11-01T09:15:52+00:00",
+      "period": "FY1976-FY2055",
+      "rows": 11456,
+      "files": [
+        "APO100_TAF_Final_2025.zip"
+      ],
+      "note": "scenario 0 actual, 1 forecast"
+    },
+    "t100": {
+      "method": "manual TranStats download: T-100 Segment (All Carriers), fields YEAR, MONTH, ORIGIN, DEST, DEST_COUNTRY, UNIQUE_CARRIER, CLASS, DEPARTURES_PERFORMED, SEATS, PASSENGERS, DISTANCE",
+      "fetched_at": "2026-11-01T09:42:01+00:00",
+      "period": "2023-2025",
+      "rows": 2138,
+      "files": [
+        "t100_2023.csv",
+        "t100_2024.csv",
+        "t100_2025.csv"
+      ],
+      "note": "no scripted URL exists for T-100; downloaded by hand through the TranStats form"
+    }
+  }
+}

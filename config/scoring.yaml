@@ -1,0 +1,34 @@
+# Capacity Pressure Score (CPS). Every threshold, weight and definition the engine uses lives here, versioned.
+# Changing a value is a versioned commit with a fresh eval report. Weights are stated assumptions (see README).
+version: "1.0.0"
+
+window: {start: 2023, end: 2025}     # calendar years for BTS On-Time and T-100 (TAF uses its last three actual fiscal years)
+taf_actual_years: 3                  # how many of the latest actual fiscal years feed utilization
+long_haul_miles: 3000                # a segment of this great-circle distance or more is long haul (about six hours)
+covid_years: [2020, 2021]            # never used in trends or growth windows
+min_departures_per_year: 3000        # On-Time years with fewer domestic departures carry no delay value
+
+capacity:
+  # Precedence per airport: FAA annual service volume (TAF table) > FAA capacity profile rate x hours > runway model.
+  source_order: [faa_service_volume, faa_profile, runway_model]
+  profile_blend: {visual: 0.7, marginal: 0.2, instrument: 0.1}   # share of hours assumed in each weather condition
+  annual_hours_equivalent: 4000      # FAA annual-service-volume rule of thumb: hourly capacity x ~4,000 usable hours
+  runway_model:                      # fitted at load on airports that have a service volume; RMSE is the uncertainty
+    features: [runways_6000ft, runways]
+
+components:
+  utilization: {weight: 0.30, unit: "ratio", label: "annual operations / annual capacity"}
+  delay:       {weight: 0.25, unit: "index", label: "mean of percentile(departures delayed 15+ min share) and percentile(excess taxi-out minutes)"}
+  growth:      {weight: 0.20, unit: "index", label: "mean of percentile(FAA 10-year forecast enplanement CAGR) and percentile(actual CAGR since FY2019)"}
+  load_factor: {weight: 0.15, unit: "ratio", label: "passengers / seats, scheduled passenger service"}
+  long_haul:   {weight: 0.10, unit: "share", label: "departures of 3,000+ miles / all departures"}
+
+growth:
+  forecast_years: 10                 # CAGR from the last actual fiscal year to +10 forecast years
+  actual_from_fiscal_year: 2019      # actual CAGR from this pre-COVID year to the last actual fiscal year
+
+lenses:
+  expansion:    {components: [utilization, delay, growth, load_factor, long_haul], weighted: true, label: "terminal / runway expansion candidates (the CPS)"}
+  congestion:   {components: [utilization, delay], weighted: false, label: "how congested the airfield is"}
+  unmet_demand: {components: [load_factor, growth, delay], weighted: false, label: "demand the current operation cannot absorb"}
+  long_haul:    {components: [long_haul], weighted: false, label: "long-haul share of departures"}

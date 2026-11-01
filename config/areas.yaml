@@ -1,0 +1,26 @@
+# US Census regions and divisions by state, plus area aliases analysts use. Filters read this file; the model never
+# decides which airport belongs where. Source: US Census Bureau regions and divisions (DC placed in South Atlantic).
+version: "1.0.0"
+divisions:
+  New England: {region: Northeast, states: [CT, ME, MA, NH, RI, VT]}
+  Middle Atlantic: {region: Northeast, states: [NJ, NY, PA]}
+  East North Central: {region: Midwest, states: [IL, IN, MI, OH, WI]}
+  West North Central: {region: Midwest, states: [IA, KS, MN, MO, NE, ND, SD]}
+  South Atlantic: {region: South, states: [DE, DC, FL, GA, MD, NC, SC, VA, WV]}
+  East South Central: {region: South, states: [AL, KY, MS, TN]}
+  West South Central: {region: South, states: [AR, LA, OK, TX]}
+  Mountain: {region: West, states: [AZ, CO, ID, MT, NV, NM, UT, WY]}
+  Pacific: {region: West, states: [AK, CA, HI, OR, WA]}
+# Area aliases: informal names mapped to state lists. Divisions and regions are also accepted by name.
+areas:
+  west coast: [CA, OR, WA]
+  east coast: [ME, NH, MA, RI, CT, NY, NJ, DE, MD, DC, VA, NC, SC, GA, FL]
+  southwest: [AZ, NM, TX, OK, NV]
+  southeast: [FL, GA, SC, NC, AL, MS, TN, KY]
+  great lakes: [IL, IN, MI, OH, WI, MN]
+  mid-atlantic: [NJ, NY, PA, DE, MD, DC, VA]
+  bay area: [CA]
+  texas triangle: [TX]
+  pacific northwest: [OR, WA]
+  rocky mountains: [CO, UT, ID, MT, WY]
+  tri-state: [NY, NJ, CT]
