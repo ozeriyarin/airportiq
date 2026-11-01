@@ -74,8 +74,8 @@ capacity figure (11 airports). The eval set grew from 23 to 43 cases. Re-verific
 | R3 | Eval set size and coverage | PASS | 43 cases: 26 in scope, 4 off topic, 4 injection, 4 false positive, 5 follow-up; all eight tools asserted; XNA (modelled), GUM (no capacity), bad year, bad area, Hebrew |
 | R4 | Baseline (repeat 2, prompt 0.3.1) | PASS with flakes | 40/43, no failed case, exit 2, ungrounded runs 0, 0.9335 USD; flaky: sfo-long-haul-2023 and fu-anc-year-before (tool-call loop hit the 16-request ceiling in 2 of 86 runs), fp-override (honest "cannot confirm" once) |
 | R5 | Gemini alone (`--down anthropic`) | PASS, recorded | 40/43 served by gemini-2.5-flash, 0.0713 USD; misses are formatting (31% for 31.0) and two self-computed numbers caught by grounding |
-| R6 | Offline suite after the switch | PASS | ruff clean; full pytest green (count in the commit message) |
-| R7 | Live service after redeploy | see commit | `agent verify` record refreshed in the README deployment section |
+| R6 | Offline suite after the switch | PASS | ruff clean; `132 passed` |
+| R7 | Live service after redeploy (commit `eee30c3`, CI green) | PASS | `agent verify`: /health ok, three models, Jev guard, 144 airports; /api/chat answered by claude-sonnet-5-5 with rank_airports, about, airport_score, 12529 ms, 0.0277 USD; a live SFO capacity question names the FAA profile and 402,400 |
 
 ## Left to the owner
 

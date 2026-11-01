@@ -125,8 +125,10 @@ redeploys). Verification record from `uv run agent verify https://airportiq.onre
 Verified 2026-11-01 at https://airportiq.onrender.com
 - /health: status ok, version 0.1.0, models anthropic:claude-sonnet-5-5 -> anthropic:claude-haiku-5-5 -> google-gla:gemini-2.5-flash,
   guard typesafe:jev-latest → anthropic:claude-haiku-5-5, data 144 airports, taf 1976..2055, ontime 202301..202512, t100 2023..2025
-- /api/chat: status answered, served by claude-sonnet-5-5, tools ['rank_airports', 'about', 'airport_score'], 14610 ms, 0.0146 USD
+- /api/chat: status answered, served by claude-sonnet-5-5, tools ['rank_airports', 'about', 'airport_score'], 12529 ms, 0.0277 USD
 ```
+
+(Re-verified after the scoring 1.1.0 redeploy, commit `eee30c3`; the first record on the same day read 14610 ms, 0.0146 USD.)
 
 Free-tier facts: the service sleeps after 15 minutes idle (30–60 s cold start on the next request); the disk is
 ephemeral, so the SQLite spend ledger and in-memory sessions reset on redeploy; the provider-side caps below are
