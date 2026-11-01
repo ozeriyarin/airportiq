@@ -19,7 +19,7 @@ the system theme, talking to `POST /api/chat`. Voice (browser Web Speech API) is
 - **Guard:** regex layer → anchored intro → `Screening(in_scope, injection)` by TypeSafe Jev (`typesafe:jev-latest`),
   fallback to Haiku on error or any field confidence < 0.7; keyword guard in `MODEL_MODE=test`. Refusals are fixed
   strings and spend nothing.
-- **Budget:** SQLite ledger, monthly cap `BUDGET_USD` (10), reserve → settle → release; per-turn `cost_limit`
+- **Budget:** SQLite ledger, monthly cap `BUDGET_USD` (15 since 1.11.2026), reserve → settle → release; per-turn `cost_limit`
   0.25 USD / 16 requests; 20 req/IP/hour, 200/day.
 - **API:** FastAPI + uvicorn: `/health`, `POST /api/chat`, `GET /api/stats` (admin token), `DELETE /api/sessions/{id}`.
   In-memory sessions (1 h TTL, LRU 500), one asyncio lock per session.

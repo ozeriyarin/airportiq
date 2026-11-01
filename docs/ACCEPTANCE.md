@@ -96,4 +96,4 @@ capacity figure (11 airports). The eval set grew from 23 to 43 cases. Re-verific
 - Voice: press the mic in Chrome or Edge, ask one of the four questions, hear the answer read back; toggle the speaker and confirm the preference survives a reload.
 - Render: set `OPENSKY_CLIENT_ID` and `OPENSKY_CLIENT_SECRET` in the service environment (v6); until then the aircraft tool runs anonymously from a shared address and usually reports the quota as exhausted.
 - Render logs: when a turn ends with "I had to stop before finishing", the log line `turn stopped by usage limit ...; tool calls: [...]` shows what the model repeated; paste it into the next session to close the loop issue.
-- Provider consoles: confirm the caps recorded as set on 1.11.2026 in Anthropic Limits, Google Cloud budget and the TypeSafe dashboard match `BUDGET_USD` (10 USD).
+- Provider consoles: confirm the caps recorded as set on 1.11.2026 in Anthropic Limits, Google Cloud budget and the TypeSafe dashboard match `BUDGET_USD` (15 USD since 1.11.2026).

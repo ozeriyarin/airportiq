@@ -25,7 +25,7 @@ services:
       - key: OPENSKY_CLIENT_SECRET
         sync: false
       - key: BUDGET_USD
-        value: "10"
+        value: "15"
       - key: ADMIN_TOKEN
         generateValue: true
       - key: DB_PATH

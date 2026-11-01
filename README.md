@@ -151,10 +151,10 @@ therefore the hard backstop. Production would use a persistent database for both
 
 ## Spend limits
 
-- Code: `BUDGET_USD` (10 USD per month) enforced before every paid call (reserve → settle / release); 0.25 USD and
+- Code: `BUDGET_USD` (15 USD per month, raised from 10 on 1.11.2026) enforced before every paid call (reserve → settle / release); 0.25 USD and
   16 model requests per turn; 20 requests per IP per hour, 200 per day. The guard's sub-cent screening call is not
   ledgered (known under-count, bounded by the per-day request cap).
-- Provider consoles: Anthropic, Google and TypeSafe caps set by the owner on 1.11.2026 (2026-11-01).
+- Provider consoles: Anthropic, Google and TypeSafe caps set by the owner on 1.11.2026 (2026-11-01) and raised to 15 USD the same day.
 - Prices: `config/prices.yaml`, verified 2026-11-01.
 
 ## Evals

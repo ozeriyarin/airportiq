@@ -29,7 +29,7 @@ def test_criterion_1_render_blueprint_is_the_deployed_shape():
     assert svc["name"] == "airportiq" and svc["healthCheckPath"] == "/health" and "uv sync --frozen --no-dev" in svc["buildCommand"]
     secrets = {e["key"] for e in svc["envVars"] if e.get("sync") is False}
     assert secrets == {"ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "TYPESAFE_API_KEY", "OPENROUTER_API_KEY", "OPENSKY_CLIENT_ID", "OPENSKY_CLIENT_SECRET"}
-    assert next(e for e in svc["envVars"] if e["key"] == "BUDGET_USD")["value"] == "10"
+    assert next(e for e in svc["envVars"] if e["key"] == "BUDGET_USD")["value"] == "15"
 
 
 def test_criterion_2_readme_has_the_live_url_and_a_dated_verify_record():
@@ -44,7 +44,7 @@ def test_criterion_2_readme_has_the_live_url_and_a_dated_verify_record():
 def test_criterion_3_spend_limits_with_dates():
     if "date recorded at closeout" in README:
         pytest.skip("provider-console cap dates not yet supplied by the owner")
-    assert "BUDGET_USD" in README and "10 USD per month" in README and "verified 2026-11-01" in README
+    assert "BUDGET_USD" in README and "15 USD per month" in README and "verified 2026-11-01" in README
     assert re.search(r"Provider consoles:.*(\d{1,2}\.\d{1,2}\.\d{4}|\d{4}-\d{2}-\d{2})", README), "provider caps need a date"
 
 

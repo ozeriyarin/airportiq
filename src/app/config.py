@@ -74,7 +74,7 @@ class Settings(BaseSettings):
     opensky_client_id: SecretStr | None = None  # OpenSky registered client; anonymous (400 credits/day) when unset
     opensky_client_secret: SecretStr | None = None
     opensky_cache_min: int = Field(default=2, ge=1)
-    budget_usd: float = Field(default=10.0, gt=0)
+    budget_usd: float = Field(default=15.0, gt=0)
     db_path: Path = Path("data/agent.db")
     admin_token: SecretStr | None = None
     model_mode: str = "live"  # "test" answers every call offline with TestModel
