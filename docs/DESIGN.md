@@ -150,7 +150,8 @@ profile, 109 on the FAA service volume, 3 on the runway model (GPI, IWA, XNA; RM
 config/        agent.yaml (models, limits), prices.yaml (verified date), v1: airports.yaml, areas.yaml, capacity_profiles.yaml, v2: scoring.yaml
 src/app/
   config.py    Settings (env, AIRPORTIQ_* aliases) + YAML config loaders
-  cli.py       Typer: agent serve | chat | eval | verify (+ v1: registry, ingest, profiles; v2: score); compose() is the only composition root
+  cli.py       Typer: agent serve | chat | eval | verify | accept | registry | ingest | profiles | score; compose() is the only composition root
+  accept.py    the live acceptance pass behind `agent accept <url>`
   llm/         models.py (chain, retries, fallback, cache settings), budget.py (SQLite ledger)
   decide/      guard.py (regex layer, Screening, Jev→Haiku, offline guard)
   agent/       schema.py (AnswerOut, Turn), prompts.py, tools.py, core.py (Service)
@@ -159,10 +160,10 @@ src/app/
   data/        v1: registry, readers, snapshots, DuckDB store, live client
   scoring/     v2: deterministic Capacity Pressure Score engine
 data/          snapshots/*.parquet committed (v1); raw/ and the runtime SQLite ledger ignored
-evals/         cases.yaml (live), smoke.yaml (offline), results/<tag>.{json,md}
+evals/         cases.yaml (live), smoke.yaml (offline), accept/ (cases for `agent accept` and the vendor-outage proof), results/<tag>.{json,md}
 tests/         offline pytest; test_<spec-slug>.py holds that spec's criterion tests; test_spec_coverage.py enforces
 agent-os/      product docs, standards (+ index.yml), one spec folder per version
-docs/          this file, demo-script.md (v4)
+docs/          this file, ACCEPTANCE.md (the acceptance pass with evidence), demo-script.md
 .github/       CI: ruff + pytest + offline eval smoke
 render.yaml    Render Blueprint (python runtime, uv sync --frozen --no-dev, /health probe)
 ```
