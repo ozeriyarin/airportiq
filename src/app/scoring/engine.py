@@ -169,7 +169,7 @@ class Engine:
                 w = weights[n] / total_w
                 contributions.append({"component": n, "percentile": p, "weight": round(w, 4), "contribution": round(w * p, 2)})
             contributions.sort(key=lambda d: -float(d["contribution"]))
-            cps = round(sum(float(d["contribution"]) for d in contributions), 1)
+            cps = self._lens_score(present, weights, list(COMPONENTS), True)  # the expansion lens, unrounded parts
         lenses = {name: self._lens_score(present, weights, lens.components, lens.weighted) for name, lens in self.config.lenses.items()}
         raw = self._raw[a.id]
         limitations = [f"weights and thresholds are stated assumptions (scoring {self.config.version}), not calibrated to investment outcomes"]

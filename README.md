@@ -5,7 +5,7 @@ capacity pressure: where added runway, gate or terminal capacity would be absorb
 deterministic code over public FAA and BTS data; the LLM interprets the question, calls typed tools and explains
 the result inside an enforced JSON schema.
 
-Design: [docs/DESIGN.md](docs/DESIGN.md) (architecture, where AI is used; scoring methodology lands with v2).
+Design: [docs/DESIGN.md](docs/DESIGN.md) (architecture, scoring methodology with a worked SFO example, key tradeoffs, where AI is used).
 Product docs and specs: [agent-os/](agent-os/). Built 1.11.2026 as a one-day take-home.
 
 ## Run it
@@ -98,9 +98,10 @@ Every figure is computed by `src/app/scoring` from the snapshot; the LLM only ch
 - **Capacity**, in order of precedence per airport: the FAA annual service volume from the TAF table (measured,
   140 airports); the FAA capacity-profile hourly rate blended across weather conditions (visual 0.7, marginal 0.2,
   instrument 0.1) times 4000 hours-equivalent (the FAA service-volume rule of thumb); a runway model fitted by
-  least squares on the airports that have a service volume, whose RMSE is reported as the uncertainty of every
-  modelled capacity (4 airports). Every answer names the source. Where a profile exists its annual cross-check is
-  reported next to the service volume (SFO: 393,000 vs 402,600).
+  least squares on the airports that have a service volume (RMSE 92,932 operations per year over 137 airports),
+  reported as the uncertainty of every modelled capacity (3 airports: GPI, IWA, XNA; GUM has no runway data and
+  reports capacity as unavailable). Every answer names the source. Where a profile exists its annual cross-check
+  is reported next to the service volume (SFO: 393,000 vs 402,400).
 - **Uncertainty:** per-year values over the window with min and max, trend = last year minus first year, the
   model RMSE, and `data_through` per source. COVID years 2020–2021 are never a trend or growth endpoint.
 - **Not calibrated:** the weights express the investment reading of the brief (congestion first, growth second,

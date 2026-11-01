@@ -50,11 +50,92 @@ browser chat page ──HTTP──▶ FastAPI (app/api)
 | Refusal, intro and error text | **no** | fixed strings in code |
 | Greeting detection | **no** | anchored regex |
 
-## Scoring methodology
+## Data layer (`app/data`)
 
-Arrives with v2 (`agent-os/specs/2026-11-01-v2-capacity-kpi`): five percentile-normalized components, versioned
-weights, measured or modelled capacity always labelled, per-year bands, lenses for congestion, unmet demand,
-expansion and long haul, and a worked SFO example recomputed by a test.
+- `areas.py`: Census regions and divisions by state plus informal areas (`config/areas.yaml`); "New England" or
+  "west coast" is a lookup, never a model guess.
+- `registry.py`: `Airport` and `AirportRegistry` over the generated `config/airports.yaml` (144 FAA large, medium
+  and small hubs). `find` resolves ids, IATA, ICAO, city, name and aliases, and returns the candidates when a
+  name is ambiguous ("Portland" → PDX, PWM). `build_registry` is a pure join of the three source files.
+- `taf.py`: the FAA Terminal Area Forecast zip. Scenario 0 is actual (FY1976–FY2024), 1 is forecast (to FY2055);
+  total operations exclude overflights; enplanements keep the international split. The airport table carries the
+  FAA annual service volume, the measured capacity used by the engine.
+- `ontime.py`: one BTS On-Time monthly zip (about 600k flights) aggregated with DuckDB into one row per origin and
+  month; fields are read by name and a missing field raises `SourceError`.
+- `t100.py`: the hand-downloaded T-100 yearly CSVs aggregated per origin, year, international, long-haul and
+  cargo flag. The manifest records that no scripted download exists and which fields were selected.
+- `profiles.py`: pypdf text plus one regex over five wording variants of the FAA capacity-profile sentence
+  ("rate range in Visual conditions ... is currently 104-107 operations per hour"), written to
+  `config/capacity_profiles.yaml` with the profile year and URL.
+- `snapshot.py` / `store.py`: DuckDB writes the Parquet tables and the manifest atomically; `Store` exposes typed
+  per-airport queries, `years` and `coverage`. `live.py`: the FAA NAS status XML (defusedxml), cached per feed,
+  one minute after a failure, `available=False` with a reason instead of an exception.
+
+## Scoring methodology (`app/scoring`)
+
+The product's number is the **Capacity Pressure Score (CPS), 0–100 per airport**. `config/scoring.yaml` (version
+1.0.0) holds every definition; `scoring_version` travels with every result.
+
+**Components** (latest-year value, per-year series over the window, min, max, trend):
+
+| component | definition | source | weight |
+|---|---|---|---|
+| utilization | annual operations / annual capacity, latest three actual fiscal years | FAA TAF | 0.30 |
+| delay | mean of percentile(delayed-15 share) and percentile(mean taxi-out minus the airport's own p10 taxi-out) | BTS On-Time | 0.25 |
+| growth | mean of percentile(FAA forecast 10-year enplanement CAGR) and percentile(actual CAGR FY2019→FY2024) | FAA TAF | 0.20 |
+| load_factor | passengers / seats, scheduled passenger service | BTS T-100 | 0.15 |
+| long_haul | departures of 3,000+ statute miles / all departures | BTS T-100 | 0.10 |
+
+**Capacity precedence** (`capacity.py`): FAA annual service volume from the TAF table (measured, 140 airports) →
+FAA capacity-profile hourly rate blended visual 0.7 / marginal 0.2 / instrument 0.1 times 4,000 hours-equivalent
+(31 airports have a profile; it is reported as a cross-check beside the service volume) → a runway model fitted by
+least squares on the airports with a service volume (`service_volume ~ runways_6000ft + runways`, n = 137, RMSE
+92,932 operations per year), used for the 3 airports without one that have runway data and reported with that
+RMSE. Every result names the source.
+
+**Normalization and lenses** (`components.py`, `engine.py`): each component's latest value is percentile-ranked
+within the universe (ties share a rank), so a value reads as "higher than N% of hub airports". CPS = Σ weight ×
+percentile; missing components renormalize the weights and are listed in `limitations`. Lenses map the brief's
+questions onto subsets: `expansion` = CPS, `congestion` = utilization + delay, `unmet_demand` = load factor +
+growth + delay, `long_haul`. Rankings sort by the lens with ties broken by airport id; comparisons list every
+component for both airports with the difference and which is higher; `unmet_demand` returns typed drivers sorted
+by distance from the median percentile. The engine is pure over the store and table-tested; the same snapshot
+always yields the same output.
+
+**Why these choices.** Percentiles survive the DEN/ATL outliers that would flatten a min–max scale and read
+naturally in a sentence. The FAA service volume is the only published per-airport capacity that covers the whole
+universe; the profiles exist for 31 airports and agree with it within a few percent where both exist, which is
+the evidence that the service volume is usable. Delay and growth are composites because one sub-metric alone is
+gameable (taxi-out without delay share rewards big airfields; forecast CAGR without actual CAGR rewards optimism).
+
+### Worked example: SFO
+
+Every figure below is what `agent score SFO` prints on the committed snapshot (scoring 1.0.0, registry 1.0.0);
+`test_criterion_14_snapshot_facts_new_england_sfo_and_anchorage` asserts every percentile and the CPS against the
+engine, so this table cannot drift from the code.
+
+Capacity: FAA annual service volume **393,000** operations per year (source `faa_service_volume`, measured). The
+2019 FAA capacity profile cross-checks it: blended rate 100.6 operations per hour × 4,000 hours-equivalent =
+402,400, 2.4% above the service volume.
+
+| component | latest value (unit) | years in band | band | percentile | weight | contribution |
+|---|---|---|---|---|---|---|
+| utilization | 0.9702 (ops / capacity, FY2024) | FY2022–FY2024 | 0.8819–0.9702, trend +0.0883 | 86.6 | 0.30 | 25.98 |
+| delay | 60.9 (combined percentile; delayed-15 share 0.1893 of 143,415 departures, excess taxi-out 8.4 min) | 2023–2025 | 0.1893–0.2335, trend −0.0105 | 60.9 | 0.25 | 15.22 |
+| growth | 45.8 (combined percentile; forecast CAGR +3.13% to FY2034, actual CAGR −2.18% FY2019→FY2024) | — | — | 45.8 | 0.20 | 9.16 |
+| load_factor | 0.8231 (passengers / seats, 2025) | 2023–2025 | 0.8231–0.8330, trend −0.0099 | 86.5 | 0.15 | 12.97 |
+| long_haul | 0.1362 (25,885 of 190,110 departures ≥ 3,000 mi, 2025; international 20.9%) | 2023–2025 | 0.1251–0.1398, trend +0.011 | 97.2 | 0.10 | 9.72 |
+
+**CPS = 73.1** (Σ contributions). Lenses: congestion 73.8 (mean of utilization 86.6 and delay 60.9), unmet demand
+64.4 (mean of load factor 86.5, growth 45.8, delay 60.9), long haul 97.2. Reading: SFO runs at 97% of its FAA
+service volume with high load factors and the fifth-highest long-haul share of the 144 hubs; its delay sits in the
+middle because departure delays are average while taxi-out excess is high; growth is a split story, strong FAA
+forecast against a traffic level still below FY2019. `unmet_demand` returns those three components as typed
+drivers (load factor raises, delay raises, growth lowers) and the model narrates them.
+
+Universe facts the example sits in: 144 hub airports (30 large, 35 medium, 79 small); 140 with an FAA service
+volume, 31 with a capacity profile, 3 on the runway model (GPI, IWA, XNA; RMSE 92,932 operations per year over
+137 airports) and 1 without any capacity (GUM, no runway data), which is reported as unavailable.
 
 ## Repository structure
 

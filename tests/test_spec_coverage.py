@@ -13,7 +13,7 @@ from app.config import ROOT
 
 SPECS = ROOT / "agent-os" / "specs"
 TESTS = Path(__file__).parent
-UNIMPLEMENTED: set[str] = {"2026-11-01-v1-airports-and-data", "2026-11-01-v2-capacity-kpi"}
+UNIMPLEMENTED: set[str] = {"2026-11-01-v3-agent", "2026-11-01-v4-deploy"}
 
 CRITERION = re.compile(r"^\s*(\d+)\.\s+\S", re.MULTILINE)
 SPEC_FOLDER = re.compile(r"^\d{4}-\d{2}-\d{2}-(.+)$")

@@ -35,6 +35,7 @@ uv run agent serve                       # http://localhost:8000
 uv run agent registry                    # regenerate config/airports.yaml from the source files
 uv run agent ingest                      # rebuild data/snapshots from FAA/BTS sources
 uv run agent profiles                    # extract FAA capacity profile rates into config
+uv run agent score SFO                   # one airport's CPS breakdown, no model call
 uv run agent eval --repeat 3 --tag latest
 uv run agent eval --down anthropic --tag anthropic-outage
 ```

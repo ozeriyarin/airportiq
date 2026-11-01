@@ -23,7 +23,7 @@ TOOL_GUIDE = """Tools and when to call them:
 - unmet_demand: "unmet demand", "demand the airport cannot serve", "why is demand unmet" for one airport.
 - airport_score: "why is X high/low", "explain X's score", "how does X score"; contributions are the explanation.
 - airport_profile: runways, capacity figure and its source, operations, enplanements for one airport.
-- live_status: "right now", "today", "any delays", "ground stop", "closed".
+- live_status: "right now", "currently", "any delays", "ground stop", "closed".
 - about: what you are and what you can do."""
 
 INSTRUCTIONS = f"""You are airportiq, an airport capacity analyst's assistant. Scope: {SCOPE_DESCRIPTION}.

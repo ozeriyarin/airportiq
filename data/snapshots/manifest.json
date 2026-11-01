@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "written_at": "2026-11-01T09:42:01+00:00",
+  "written_at": "2026-11-01T10:20:21+00:00",
   "registry_version": "1.0.0",
   "airports": 144,
   "long_haul_miles": 3000,
@@ -30,6 +30,51 @@
         "t100_2025.csv"
       ],
       "note": "no scripted URL exists for T-100; downloaded by hand through the TranStats form"
+    },
+    "ontime": {
+      "method": "http GET https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_{year}_{month}.zip",
+      "fetched_at": "2026-11-01T10:20:21+00:00",
+      "period": "2023-01..2025-12",
+      "rows": 5076,
+      "files": [
+        "ontime_2023_1.zip",
+        "ontime_2023_2.zip",
+        "ontime_2023_3.zip",
+        "ontime_2023_4.zip",
+        "ontime_2023_5.zip",
+        "ontime_2023_6.zip",
+        "ontime_2023_7.zip",
+        "ontime_2023_8.zip",
+        "ontime_2023_9.zip",
+        "ontime_2023_10.zip",
+        "ontime_2023_11.zip",
+        "ontime_2023_12.zip",
+        "ontime_2024_1.zip",
+        "ontime_2024_2.zip",
+        "ontime_2024_3.zip",
+        "ontime_2024_4.zip",
+        "ontime_2024_5.zip",
+        "ontime_2024_6.zip",
+        "ontime_2024_7.zip",
+        "ontime_2024_8.zip",
+        "ontime_2024_9.zip",
+        "ontime_2024_10.zip",
+        "ontime_2024_11.zip",
+        "ontime_2024_12.zip",
+        "ontime_2025_1.zip",
+        "ontime_2025_2.zip",
+        "ontime_2025_3.zip",
+        "ontime_2025_4.zip",
+        "ontime_2025_5.zip",
+        "ontime_2025_6.zip",
+        "ontime_2025_7.zip",
+        "ontime_2025_8.zip",
+        "ontime_2025_9.zip",
+        "ontime_2025_10.zip",
+        "ontime_2025_11.zip",
+        "ontime_2025_12.zip"
+      ],
+      "note": "domestic reporting carriers only"
     }
   }
 }
