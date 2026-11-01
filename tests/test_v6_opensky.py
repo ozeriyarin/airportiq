@@ -110,6 +110,13 @@ async def test_criterion_4_cache_quota_and_failures_never_raise():
     assert [p for _, p, _, _ in log].count("/api/states/all") == 2
     quota = await _client([], states_status=429).aircraft_near("SFO", 37.62, -122.38)
     assert not quota.available and "quota" in quota.reason and "3600" in quota.reason and quota.credits_remaining == 0
+    from app.llm.models import (
+        retrying_http_client,  # the production client raises on 429; the quota branch must still see it
+    )
+
+    validating = OpenSkyClient(retrying_http_client(attempts=1, timeout_s=5, max_wait_s=0, wrapped=_transport([], states_status=429)), None, None)
+    via_raise = await validating.aircraft_near("SFO", 37.62, -122.38)
+    assert not via_raise.available and "quota" in via_raise.reason and "3600" in via_raise.reason
     down = await _client([], states_status=503).aircraft_near("SFO", 37.62, -122.38)
     assert not down.available and "503" in down.reason
     dead = OpenSkyClient(httpx2.AsyncClient(transport=httpx2.MockTransport(lambda r: (_ for _ in ()).throw(httpx2.ConnectError("x")))), None, None)

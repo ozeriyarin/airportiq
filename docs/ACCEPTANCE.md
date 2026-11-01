@@ -87,8 +87,13 @@ capacity figure (11 airports). The eval set grew from 23 to 43 cases. Re-verific
 | S2 | Loop traced and fixed | PASS | `capture_run_messages` on a limit-exceeded turn: `traffic_mix` called 15 times with identical arguments; fix: every tool wrapped so a repeated identical call returns `Repeated` (commit `cbe743d`), offline test with a scripted model that repeats a call |
 | S3 | `agent accept https://airportiq.onrender.com` after the redeploy of `cbe743d` | PASS | 18/18 checks, exit 0; brief-3 (ANC): answered, claude-sonnet-5-5, tools traffic_mix + about, 0.0108 USD, 6904 ms, 65 words; every other row as in S1 |
 
+| S4 | `agent accept` after the v6 redeploy (`9ec7341`) | 16/18 | the ANC question looped again (cannot_answer, 0 USD, 24 s) and its follow-up therefore lacked context; everything else PASS. The repeat guard stops the tool from re-running but not the model from re-asking, so the 16-request ceiling still ends the turn. Render now logs the call sequence of such a turn; owner to read it. |
+| S5 | `aircraft_now` on Render without credentials | FAIL, fixed | anonymous call from Render's shared egress address returned 429 and the validating client raised before the quota branch; fixed so the 429 and its Retry-After are reported (offline test added); with `OPENSKY_CLIENT_ID` / `OPENSKY_CLIENT_SECRET` set in Render the registered quota (4,000 a day) applies |
+
 ## Left to the owner
 
 - Phone pass on https://airportiq.onrender.com: keyboard does not cover the input, last bubble clears the sticky bar, example placeholder rotates, dark mode follows the system.
 - Voice: press the mic in Chrome or Edge, ask one of the four questions, hear the answer read back; toggle the speaker and confirm the preference survives a reload.
+- Render: set `OPENSKY_CLIENT_ID` and `OPENSKY_CLIENT_SECRET` in the service environment (v6); until then the aircraft tool runs anonymously from a shared address and usually reports the quota as exhausted.
+- Render logs: when a turn ends with "I had to stop before finishing", the log line `turn stopped by usage limit ...; tool calls: [...]` shows what the model repeated; paste it into the next session to close the loop issue.
 - Provider consoles: confirm the caps recorded as set on 1.11.2026 in Anthropic Limits, Google Cloud budget and the TypeSafe dashboard match `BUDGET_USD` (10 USD).

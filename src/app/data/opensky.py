@@ -95,18 +95,25 @@ class OpenSkyClient:
         self._cache[airport_id] = _Cached(self.now(), result)
         return result
 
+    async def _get(self, box: dict[str, float], headers: dict[str, str]) -> httpx2.Response:
+        """A validating client raises on 4xx/5xx; the status branches below need the response itself."""
+        try:
+            return await self.http.get(self.states_url, params=box, headers=headers)
+        except httpx2.HTTPStatusError as e:
+            return e.response
+
     async def _query(self, airport_id: str, lat: float, lon: float) -> AircraftNow:
         box = bounding_box(lat, lon, self.radius_km)
         token, token_reason = await self._bearer()
         auth = "client" if token else "anonymous"
         headers = {"Authorization": f"Bearer {token}"} if token else {}
         try:
-            r = await self.http.get(self.states_url, params=box, headers=headers)
+            r = await self._get(box, headers)
             if r.status_code == 401 and token:
                 token, token_reason = await self._bearer(force=True)
                 headers = {"Authorization": f"Bearer {token}"} if token else {}
                 auth = "client" if token else "anonymous"
-                r = await self.http.get(self.states_url, params=box, headers=headers)
+                r = await self._get(box, headers)
             credits = r.headers.get("X-Rate-Limit-Remaining")
             remaining = int(credits) if credits and credits.isdigit() else None
             if r.status_code == 429:
