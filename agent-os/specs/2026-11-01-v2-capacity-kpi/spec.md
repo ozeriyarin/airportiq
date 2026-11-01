@@ -1,6 +1,6 @@
 # Spec: v2 capacity KPI
 
-Status: shaped 1.11.2026, awaiting owner approval.
+Status: shipped 1.11.2026, commit `df86f19`, 16 criterion tests green.
 
 ## Goal
 

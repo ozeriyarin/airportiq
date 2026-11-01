@@ -12,16 +12,26 @@ report (when prompts/models change) → README/roadmap → commit.
   with grounding check, `--down` / `--model`, prompt caching, `agent verify`, CI, Render blueprint; 84 offline tests
   including 25 criterion tests; smoke eval 10/10 (`evals/results/ci-smoke`).
 
+- **v1 airports and data** (1.11.2026, spec `agent-os/specs/2026-11-01-v1-airports-and-data`, commit `df86f19`): generated
+  registry of 144 FAA hub airports with Census division, FAA service volume, runways and aliases; snapshot of FAA TAF
+  (FY1976–FY2055, 11,456 rows), BTS On-Time 2023–2025 (5,076 origin-month rows), hand-downloaded BTS T-100 2023–2025
+  (2,138 rows); 31 FAA capacity profiles extracted; DuckDB store; live FAA NAS status client; 15 criterion tests.
+
+- **v2 capacity KPI** (1.11.2026, spec `agent-os/specs/2026-11-01-v2-capacity-kpi`, commit `df86f19`): `config/scoring.yaml`
+  1.0.0, five percentile-normalized components, capacity precedence (FAA service volume > profile cross-check > runway
+  model, RMSE 92,932 ops over 137 airports), lenses, eight tools, `agent score`, worked SFO example (CPS 73.1) asserted by
+  a test; 16 criterion tests; 115 tests total.
+
 ## Phase 1: MVP (must ship today)
 
 1. ~~v0 platform~~ shipped. Was: lift the scaffold: model chain (Sonnet → Haiku → Gemini) with retries and fallback, Jev → Haiku
    guard, budget ledger, FastAPI API + chat page, sessions, rate limits, eval runner, prompt caching, CI, Render
    Blueprint, `agent verify`. Keyless run with `MODEL_MODE=test`.
-2. **v1 airports and data** — generated registry of ~130 hub airports with Census region/division and aliases;
+2. ~~v1 airports and data~~ shipped. Was: generated registry of ~130 hub airports with Census region/division and aliases;
    ingest of FAA TAF, FAA enplanements, OurAirports runways, BTS On-Time (2023–2025 aggregates), hand-downloaded BTS
    T-100 aggregates, FAA capacity profile extraction; Parquet snapshots + manifest; DuckDB store; FAA NAS status
    live client with cache.
-3. **v2 capacity KPI** — `config/scoring.yaml`, pure engine (five components, percentile normalization, weighted
+3. ~~v2 capacity KPI~~ shipped. Was: `config/scoring.yaml`, pure engine (five components, percentile normalization, weighted
    CPS, per-year band, trend, capacity model calibrated on the FAA profiles), tools that never raise, worked
    example (SFO) recomputed by a test.
 4. **v3 agent** — domain prompts, tools wired, eval cases (the four brief questions plus off_topic / injection /

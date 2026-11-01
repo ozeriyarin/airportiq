@@ -1,6 +1,6 @@
 # Spec: v1 airports and data
 
-Status: shaped 1.11.2026, awaiting owner approval.
+Status: shipped 1.11.2026, commit `df86f19`, 15 criterion tests green.
 
 ## Goal
 
