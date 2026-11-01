@@ -1,6 +1,6 @@
 # Spec: v4 deploy
 
-Status: shipped 1.11.2026, commit `dd57e32`, 6 criterion tests (provider-cap dates awaited from the owner).
+Status: shipped 1.11.2026, commit `dd57e32`, 6 criterion tests.
 
 ## Goal
 
