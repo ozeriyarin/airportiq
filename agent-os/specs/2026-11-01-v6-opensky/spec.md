@@ -1,6 +1,6 @@
 # Spec: v6 OpenSky
 
-Status: shaped 1.11.2026 (bonus item; owner asked for it after the structure pass).
+Status: shipped 1.11.2026, commit `c75a3b6`, 6 criterion tests.
 
 ## Goal
 
