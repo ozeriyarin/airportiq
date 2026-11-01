@@ -25,6 +25,9 @@ browser chat page ──HTTP──▶ FastAPI (app/api)
 
 - **Browser chat page.** Speech-to-text and spoken answers (v5) run in the browser via the Web Speech API and
   never reach the API; the server only ever sees text.
+- **Two live signals, outside the score.** The FAA NAS status feed (closures, ground stops, delay programs) and
+  the OpenSky Network aircraft count around an airport (v6) are snapshots the agent reports beside the frozen
+  score, never blended into it; both degrade to `available=False` with a reason.
 - **The LLM never produces a number.** Tools return typed Pydantic models; the model picks tools and explains.
   `AnswerOut` is enforced by Pydantic AI; a reply that fails validation is retried once, then the turn fails loudly.
 - **Three retry layers, one job each:** the httpx transport retries 429/5xx/network per model with Retry-After;
@@ -69,6 +72,10 @@ browser chat page ──HTTP──▶ FastAPI (app/api)
 - `profiles.py`: pypdf text plus one regex over five wording variants of the FAA capacity-profile sentence
   ("rate range in Visual conditions ... is currently 104-107 operations per hour"), written to
   `config/capacity_profiles.yaml` with the profile year and URL.
+- `opensky.py` (v6, OpenSky Network): OAuth2 client-credentials token (cached, re-fetched once on a 401, anonymous fallback with the
+  reason recorded), a bounding box of 25 km around the airport, state vectors counted into total, airborne and
+  on-ground aircraft, per-airport cache of two minutes, quota and failures reported as `available=False`. A snapshot
+  beside the score, never blended into it.
 - `snapshot.py` / `store.py`: DuckDB writes the Parquet tables and the manifest atomically; `Store` exposes typed
   per-airport queries, `years` and `coverage`. `live.py`: the FAA NAS status XML (defusedxml), cached per feed,
   one minute after a failure, `available=False` with a reason instead of an exception.

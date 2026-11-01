@@ -22,6 +22,7 @@ from app.api.ratelimit import RateLimiter
 from app.api.sessions import SessionStore
 from app.config import CONFIG_DIR, ROOT, AgentConfig, Settings, load_agent_config, load_prices
 from app.data.live import NasStatusClient
+from app.data.opensky import OpenSkyClient
 from app.data.profiles import load_profiles
 from app.data.registry import AirportRegistry
 from app.data.store import Store
@@ -92,6 +93,7 @@ def compose(*, model_mode: str | None = None, down: list[str] | None = None, onl
     deps = ToolContext(
         product_name=config.name, registry=registry, store=store, profiles=profiles, engine=engine,
         live=NasStatusClient(live_http, settings.faa_user_agent, cache_min=settings.live_cache_min),
+        opensky=OpenSkyClient(live_http, settings.opensky_client_id, settings.opensky_client_secret, cache_min=settings.opensky_cache_min),
     )
     service = Service(build_agent(chain.model, cache=config.models.cache), Guard(guard_model), budget, config.limits, prices, deps)
     return App(settings, config, service, budget, chain.names, guard_name, store.summary() if store else None)

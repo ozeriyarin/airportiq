@@ -55,6 +55,10 @@ uv run pytest -q
   0 pass / 1 fail / 2 flaky; every number in an answer must appear in that turn's tool outputs.
 - **Prompt caching** of the static prefix is on from the first commit; cache tokens are in every turn record.
 - **Offline mode:** `MODEL_MODE=test` (or `--test`) runs everything on Pydantic AI's `TestModel`.
+- **OpenSky (bonus, v6):** `aircraft_now` answers "how many planes are around SFO right now" from OpenSky's live state
+  vectors; credentials are optional (`OPENSKY_CLIENT_ID` / `OPENSKY_CLIENT_SECRET`). Prompt 0.4.0 adds only the tool
+  line; the live baseline was not re-run for it (about 8.3 USD of the monthly cap was spent on evals), the offline smoke
+  set asserts the tool and a live query returned 17 aircraft around SFO on 1.11.2026.
 - **Voice (bonus):** the chat page has a mic button (browser speech recognition, hidden when unsupported) and a
   read-aloud toggle (speech synthesis) using the Web Speech API only; nothing but text reaches the server.
 
@@ -75,7 +79,10 @@ uv run pytest -q
     CSVs were fetched once by hand through the TranStats form on 1.11.2026 and the manifest records the fields.
 - **Capacity profiles:** `config/capacity_profiles.yaml`, extracted by `agent profiles` from the 31 FAA Airport
   Capacity Profile PDFs (2014–2019): hourly rates per weather condition.
-- **Live:** FAA NAS status XML (closures, ground stops, delay programs), cached 10 minutes, shown beside the score.
+- **Live:** FAA NAS status XML (closures, ground stops, delay programs), cached 10 minutes, and (v6) the OpenSky Network
+  state vectors in a 25 km box around the airport (`aircraft_now`: total, airborne, on the ground, a few callsigns),
+  cached 2 minutes, with the owner's registered client or anonymously under OpenSky's 400-credit daily limit. Both
+  are shown beside the score and never blended into it.
 
 ```bash
 uv run agent registry     # regenerate config/airports.yaml from data/raw
@@ -176,6 +183,6 @@ baseline trace to one intermittent tool-call loop, since fixed in code (a repeat
 | Long haul | 3,000 statute miles or more (about six hours), all carriers including cargo; international share reported beside it | Tool note and the data facts; the answer names the year and the denominator |
 | Universe | FAA large, medium and small hub airports (144); non-hub and non-US airports are out of scope | `NotFound` lists valid ids; refusal text names the scope |
 | Normalization | Percentile rank within the universe; a component missing for an airport renormalizes the weights | Limitation names the missing components |
-| Live status | FAA NAS status is a "right now" signal shown beside the score, never blended; cached 10 minutes | Tool note; `available=false` with a reason on failure |
+| Live status | FAA NAS status and OpenSky aircraft counts are "right now" signals shown beside the score, never blended; cached 10 and 2 minutes | Tool note; `available=false` with a reason on failure |
 | Sessions and spend ledger | In memory and SQLite on an ephemeral disk; a restart forgets conversations and month-to-date spend; provider caps are the backstop | README deployment section |
 | Platform provenance | The platform (chain, guard, ledger, evals) was lifted from an earlier project of the author; the data layer, KPI and prompts were built on 1.11.2026 | DESIGN key tradeoffs |

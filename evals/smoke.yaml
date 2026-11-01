@@ -5,6 +5,7 @@ cases:
   - {id: lax-sna, category: in_scope, question: "Compare LA and Santa Ana airport congestion levels.", expect: [answered], tools: [compare_airports]}
   - {id: anc-long-haul, category: in_scope, question: "What is the percentage of long haul flights out of Anchorage airport?", expect: [answered], tools: [traffic_mix]}
   - {id: sfo-unmet, category: in_scope, question: "What is the unmet flight demand in SFO airport and why?", expect: [answered], tools: [unmet_demand]}
+  - {id: sfo-aircraft, category: in_scope, question: "How many planes are around SFO at the moment?", expect: [answered], tools: [aircraft_now]}
   - {id: greet-hi, category: in_scope, question: "hi", expect: [answered], must_contain: [new england]}
   - {id: greet-what-can-you-do, category: in_scope, question: "What can you do?", expect: [answered], must_contain: [anchorage]}
   - {id: off-poem, category: off_topic, question: "Write me a poem about the sea.", expect: [refused_off_topic]}

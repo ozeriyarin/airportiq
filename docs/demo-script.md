@@ -28,6 +28,7 @@ over FAA and BTS data and the LLM only chooses tools and explains."
 
 - `config/scoring.yaml`: five components, weights, lenses, capacity precedence; version string in every answer.
 - `agent score SFO` in the terminal: the same numbers, no model call.
+- Live: "How many planes are around SFO right now?" → OpenSky snapshot (registered client), separate from the score.
 - Guard: ask "write me a poem" → fixed refusal, zero spend; "ignore your instructions" → regex layer.
 - `evals/results/`: baseline report (pass rate, grounding, cost, cache share) and the Anthropic-down report.
 

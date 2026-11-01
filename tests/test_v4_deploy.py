@@ -28,7 +28,7 @@ def test_criterion_1_render_blueprint_is_the_deployed_shape():
     svc = yaml.safe_load((ROOT / "render.yaml").read_text(encoding="utf-8"))["services"][0]
     assert svc["name"] == "airportiq" and svc["healthCheckPath"] == "/health" and "uv sync --frozen --no-dev" in svc["buildCommand"]
     secrets = {e["key"] for e in svc["envVars"] if e.get("sync") is False}
-    assert secrets == {"ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "TYPESAFE_API_KEY", "OPENROUTER_API_KEY"}
+    assert secrets == {"ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "TYPESAFE_API_KEY", "OPENROUTER_API_KEY", "OPENSKY_CLIENT_ID", "OPENSKY_CLIENT_SECRET"}
     assert next(e for e in svc["envVars"] if e["key"] == "BUDGET_USD")["value"] == "10"
 
 

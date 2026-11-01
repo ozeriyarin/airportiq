@@ -2,7 +2,7 @@
 
 import re
 
-PROMPT_VERSION = "0.3.1"
+PROMPT_VERSION = "0.4.0"
 
 # Read by the guard (what counts as in scope) and by the answer model.
 SCOPE_DESCRIPTION = (
@@ -24,6 +24,7 @@ TOOL_GUIDE = """Tools and when to call them:
 - airport_score: "why is X high/low", "explain X's score", "how does X score"; contributions are the explanation.
 - airport_profile: runways, capacity figure and its source, operations, enplanements for one airport.
 - live_status: "right now", "currently", "any delays", "ground stop", "closed".
+- aircraft_now: "how many planes", "aircraft in the air", "traffic at the moment" for one airport (OpenSky snapshot).
 - about: what you are and what you can do."""
 
 INSTRUCTIONS = f"""You are airportiq, an airport capacity analyst's assistant. Scope: {SCOPE_DESCRIPTION}.

@@ -20,6 +20,7 @@ from pydantic_ai.toolsets import FunctionToolset
 from app import __version__
 from app.agent.prompts import SCOPE_DESCRIPTION
 from app.data.live import LiveStatus, NasStatusClient
+from app.data.opensky import AircraftNow, OpenSkyClient
 from app.data.profiles import ProfilesFile
 from app.data.registry import Airport, AirportRegistry
 from app.data.store import Store
@@ -37,6 +38,7 @@ class ToolContext:
     live: NasStatusClient | None = None
     profiles: ProfilesFile | None = None
     engine: Engine | None = None
+    opensky: OpenSkyClient | None = None
 
     @property
     def data_facts(self) -> str:
@@ -57,7 +59,7 @@ class ToolContext:
             lines.append("Sources: taf = FAA Terminal Area Forecast (operations, enplanements, annual service volume); ontime = BTS "
                          "Airline On-Time Performance (domestic reporting carriers: delays, taxi-out); t100 = BTS T-100 Segment, all "
                          "carriers (departures, seats, passengers, distance); capacity profiles = FAA Airport Capacity Profiles (2014-2019); "
-                         "live status = FAA NAS status feed.")
+                         "live status = FAA NAS status feed; aircraft_now = OpenSky Network live state vectors (a snapshot, outside the score).")
             lines.append("Lenses for rank_airports/compare_airports: " + "; ".join(f"{n} = {lens.label}" for n, lens in cfg.lenses.items()) + ".")
             lines.append("Component weights: " + ", ".join(f"{n} {c.weight:g} ({c.weight * 100:g}%)" for n, c in cfg.components.items()) + f". Long haul = {cfg.long_haul_miles}+ miles.")
         return "\n".join(lines)
@@ -318,8 +320,18 @@ async def live_status(ctx: RunContext[ToolContext], airport: str) -> LiveStatus 
     return await ctx.deps.live.status(a.id)
 
 
+async def aircraft_now(ctx: RunContext[ToolContext], airport: str) -> AircraftNow | NotFound | Ambiguous | Unavailable:
+    """How many aircraft are currently around an airport (OpenSky live snapshot in a 25 km box): total, airborne, on the ground, a few callsigns. Separate from the frozen score."""
+    a = resolve_airport(ctx.deps, airport)
+    if not isinstance(a, Airport):
+        return a
+    if ctx.deps.opensky is None:
+        return Unavailable(reason="OpenSky client not configured")
+    return await ctx.deps.opensky.aircraft_near(a.id, a.lat, a.lon)
+
+
 def build_toolset() -> FunctionToolset[ToolContext]:
     toolset: FunctionToolset[ToolContext] = FunctionToolset()
-    for fn in (about, list_airports, rank_airports, compare_airports, airport_score, airport_profile, traffic_mix, unmet_demand, live_status):
+    for fn in (about, list_airports, rank_airports, compare_airports, airport_score, airport_profile, traffic_mix, unmet_demand, live_status, aircraft_now):
         toolset.add_function(dedupe(fn), name=fn.__name__)
     return toolset

@@ -424,5 +424,5 @@ def test_criterion_25_ci_and_render_blueprint():
     assert "uv sync --frozen --no-dev" in svc["buildCommand"] and "agent serve" in svc["startCommand"]
     assert svc["healthCheckPath"] == "/health"
     secrets = {e["key"] for e in svc["envVars"] if e.get("sync") is False}
-    assert secrets == {"ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "TYPESAFE_API_KEY", "OPENROUTER_API_KEY"}
+    assert secrets == {"ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "TYPESAFE_API_KEY", "OPENROUTER_API_KEY", "OPENSKY_CLIENT_ID", "OPENSKY_CLIENT_SECRET"}
     assert next(e for e in svc["envVars"] if e["key"] == "BUDGET_USD")["value"] == "10"
